@@ -7,20 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  Key, 
-  Plug, 
-  Check, 
+import {
+  ArrowLeft,
+  Key,
+  Plug,
+  Check,
   AlertCircle,
   Mic,
   Camera,
   Mail,
-  Workflow
+  Workflow,
+  Settings as SettingsIcon,
+  Shield
 } from 'lucide-react'
 
 export default function Settings() {
-  const { setCurrentSection, apiKeys, integrations, setApiKey, setIntegration, loadSettings } = useAppStore()
+  const { setCurrentSection, apiKeys, integrations, ownerSettings, setApiKey, setIntegration, setOwnerSetting, loadSettings } = useAppStore()
   const [activeTab, setActiveTab] = useState('api-keys')
 
   useEffect(() => {
@@ -45,33 +47,41 @@ export default function Settings() {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">
-              Public API Key
+              Public API Key <span className="text-red-500">*</span>
             </label>
             <Input
               type="password"
-              placeholder="58f63a6f-6694-4fe3-8f72-fea362908803 (default)"
+              placeholder="Enter your VAPI public key (required)"
               value={apiKeys.vapi || ''}
               onChange={(e) => setApiKey('vapi', e.target.value)}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Using Fabio assistant by default. Get your own key from <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai</a>
+              Required for voice calls. Get your key from <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai</a>
             </p>
           </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">
-              Assistant ID
+              Assistant ID <span className="text-red-500">*</span>
             </label>
             <Input
               type="text"
-              placeholder="00788639-dd74-48ec-aa8b-a6572d70e45b (Fabio)"
+              placeholder="Enter your VAPI assistant ID (required)"
               value={apiKeys.vapiAssistantId || ''}
               onChange={(e) => setApiKey('vapiAssistantId', e.target.value)}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Create your assistant at <a href="https://vapi.ai/dashboard" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai/dashboard</a>
+            </p>
           </div>
-          {apiKeys.vapi && (
+          {apiKeys.vapi && apiKeys.vapiAssistantId ? (
             <Badge variant="default" className="gap-1">
               <Check className="w-3 h-3" />
               Connected
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Keys Required
             </Badge>
           )}
         </CardContent>
@@ -410,6 +420,103 @@ export default function Settings() {
     </div>
   )
 
+  // Admin/Owner Settings Tab
+  const AdminTab = () => (
+    <div className="space-y-6">
+      <Card className="bg-orange-500/10 border-orange-500/30">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Shield className="w-6 h-6 text-orange-500" />
+            <div>
+              <CardTitle>Owner/Admin Settings</CardTitle>
+              <CardDescription>Control default API keys and billing model for your users</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">Provide Default API Keys</h3>
+              <p className="text-sm text-muted-foreground">
+                When enabled, users without their own API keys will use your default keys (you pay for API usage).
+                When disabled, users must provide their own API keys to use the service.
+              </p>
+            </div>
+            <Button
+              variant={ownerSettings.provideDefaultKeys ? "default" : "outline"}
+              onClick={() => setOwnerSetting('provideDefaultKeys', !ownerSettings.provideDefaultKeys)}
+              className="ml-4"
+            >
+              {ownerSettings.provideDefaultKeys ? "ON" : "OFF"}
+            </Button>
+          </div>
+
+          {ownerSettings.provideDefaultKeys && (
+            <div className="space-y-4 p-4 bg-background rounded-lg border">
+              <h3 className="font-semibold text-foreground">Your Default API Keys</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                These keys will be used as fallback when users haven't configured their own.
+              </p>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Default VAPI Public Key
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Enter your VAPI public key"
+                  value={ownerSettings.defaultVapiKey}
+                  onChange={(e) => setOwnerSetting('defaultVapiKey', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Default VAPI Assistant ID
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter your VAPI assistant ID"
+                  value={ownerSettings.defaultVapiAssistantId}
+                  onChange={(e) => setOwnerSetting('defaultVapiAssistantId', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Default Anthropic API Key (Optional)
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Enter your Anthropic API key"
+                  value={ownerSettings.defaultAnthropicKey}
+                  onChange={(e) => setOwnerSetting('defaultAnthropicKey', e.target.value)}
+                />
+              </div>
+
+              {ownerSettings.defaultVapiKey && ownerSettings.defaultVapiAssistantId && (
+                <Badge variant="default" className="gap-1">
+                  <Check className="w-3 h-3" />
+                  Default Keys Configured
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <Card className="bg-blue-500/5 border-blue-500/20">
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-foreground mb-2 text-sm">💡 Business Models</h3>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li><strong>ON:</strong> Freemium - You cover API costs for users. Charge subscription to offset.</li>
+                <li><strong>OFF:</strong> BYOK (Bring Your Own Keys) - Users pay their own API bills.</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </CardContent>
+      </Card>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -441,6 +548,10 @@ export default function Settings() {
               <Plug className="w-4 h-4 mr-2" />
               Integrations
             </TabsTrigger>
+            <TabsTrigger value="admin" className="flex-1">
+              <Shield className="w-4 h-4 mr-2" />
+              Admin
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="api-keys">
@@ -449,6 +560,10 @@ export default function Settings() {
 
           <TabsContent value="integrations">
             <IntegrationsTab />
+          </TabsContent>
+
+          <TabsContent value="admin">
+            <AdminTab />
           </TabsContent>
         </Tabs>
 

@@ -53,6 +53,13 @@ interface AppState {
     vapiAssistantId: string | null
     anthropic: string | null
   }
+  // Owner/Admin Settings
+  ownerSettings: {
+    provideDefaultKeys: boolean // If true, use owner's keys as fallback
+    defaultVapiKey: string
+    defaultVapiAssistantId: string
+    defaultAnthropicKey: string
+  }
   integrations: {
     microsoft: { enabled: boolean; clientId: string | null; tenantId: string | null }
     google: { enabled: boolean; clientId: string | null; apiKey: string | null }
@@ -62,6 +69,7 @@ interface AppState {
     email: { enabled: boolean; smtpHost: string | null; smtpPort: string | null; username: string | null }
   }
   setApiKey: (key: string, value: string) => void
+  setOwnerSetting: (key: string, value: any) => void
   setIntegration: (platform: string, config: any) => void
   loadSettings: () => void
   saveSettings: () => void
@@ -127,6 +135,13 @@ export const useAppStore = create<AppState>((set) => ({
     vapiAssistantId: null,
     anthropic: null,
   },
+  // Owner/Admin Settings - these are YOUR credentials
+  ownerSettings: {
+    provideDefaultKeys: true, // Toggle this to enable/disable fallback to your keys
+    defaultVapiKey: '58f63a6f-6694-4fe3-8f72-fea362908803',
+    defaultVapiAssistantId: '00788639-dd74-48ec-aa8b-a6572d70e45b',
+    defaultAnthropicKey: '', // Add your Anthropic key here if you want
+  },
   integrations: {
     microsoft: { enabled: false, clientId: null, tenantId: null },
     google: { enabled: false, clientId: null, apiKey: null },
@@ -138,6 +153,16 @@ export const useAppStore = create<AppState>((set) => ({
   setApiKey: (key, value) => {
     set((state) => ({
       apiKeys: { ...state.apiKeys, [key]: value }
+    }))
+    // Auto-save to localStorage
+    setTimeout(() => {
+      const state = useAppStore.getState()
+      state.saveSettings()
+    }, 0)
+  },
+  setOwnerSetting: (key, value) => {
+    set((state) => ({
+      ownerSettings: { ...state.ownerSettings, [key]: value }
     }))
     // Auto-save to localStorage
     setTimeout(() => {
@@ -163,8 +188,13 @@ export const useAppStore = create<AppState>((set) => ({
       const saved = localStorage.getItem('appio-settings')
       if (saved) {
         try {
-          const { apiKeys, integrations } = JSON.parse(saved)
-          set({ apiKeys, integrations })
+          const parsed = JSON.parse(saved)
+          const { apiKeys, integrations, ownerSettings } = parsed
+          set({
+            apiKeys,
+            integrations,
+            ...(ownerSettings && { ownerSettings })
+          })
         } catch (e) {
           console.error('Failed to load settings:', e)
         }
@@ -173,8 +203,8 @@ export const useAppStore = create<AppState>((set) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations } = useAppStore.getState()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations }))
+      const { apiKeys, integrations, ownerSettings } = useAppStore.getState()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings }))
     }
   },
 }))

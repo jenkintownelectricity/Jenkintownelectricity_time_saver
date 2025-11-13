@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Mic, PhoneOff, Loader2 } from 'lucide-react'
 
 export default function VoiceInterface() {
-  const { setCurrentSection, voiceCall, startVoiceCall, endVoiceCall, addTranscript, apiKeys } = useAppStore()
+  const { setCurrentSection, voiceCall, startVoiceCall, endVoiceCall, addTranscript, apiKeys, ownerSettings } = useAppStore()
   const [isInitializing, setIsInitializing] = useState(false)
   const vapiRef = useRef<Vapi | null>(null)
 
@@ -38,12 +38,18 @@ export default function VoiceInterface() {
   }, [])
 
   const handleStartCall = async () => {
+    // Check if we have user keys OR owner is providing default keys
+    const publicKey = apiKeys.vapi || (ownerSettings.provideDefaultKeys ? ownerSettings.defaultVapiKey : null)
+    const assistantId = apiKeys.vapiAssistantId || (ownerSettings.provideDefaultKeys ? ownerSettings.defaultVapiAssistantId : null)
+
+    if (!publicKey || !assistantId) {
+      addTranscript('System: Please add your VAPI API keys in Settings to start a call')
+      return
+    }
+
     setIsInitializing(true)
 
     try {
-      // Use provided VAPI credentials
-      const publicKey = apiKeys.vapi || '58f63a6f-6694-4fe3-8f72-fea362908803'
-      const assistantId = apiKeys.vapiAssistantId || '00788639-dd74-48ec-aa8b-a6572d70e45b'
 
       // Initialize VAPI SDK
       if (!vapiRef.current) {
@@ -159,12 +165,45 @@ export default function VoiceInterface() {
             </div>
           </Card>
 
+          {(!apiKeys.vapi || !apiKeys.vapiAssistantId) && !ownerSettings.provideDefaultKeys ? (
+            <Card className="bg-yellow-500/10 border-yellow-500/30">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                  ⚠️ API Keys Required
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  To use voice calls, you need to add your own VAPI API keys in Settings.
+                  This ensures you control your own usage and billing.
+                </p>
+                <Button
+                  onClick={() => setCurrentSection('settings')}
+                  variant="default"
+                >
+                  Go to Settings
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {(!apiKeys.vapi || !apiKeys.vapiAssistantId) && ownerSettings.provideDefaultKeys ? (
+            <Card className="bg-blue-500/10 border-blue-500/30">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                  ℹ️ Using Default Service
+                </h3>
+                <p className="text-sm text-muted-foreground mb-2">
+                  You're using the default AppIo.AI voice service. For your own custom assistant or to control your billing, add your VAPI keys in Settings.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <div className="flex justify-center gap-4">
             {!voiceCall.isActive ? (
               <Button
                 size="xl"
                 onClick={handleStartCall}
-                disabled={isInitializing}
+                disabled={isInitializing || (!apiKeys.vapi && !apiKeys.vapiAssistantId && !ownerSettings.provideDefaultKeys)}
                 className="w-48 h-16 text-lg"
               >
                 {isInitializing ? (
