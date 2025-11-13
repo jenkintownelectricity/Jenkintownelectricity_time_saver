@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import Vapi from '@vapi-ai/web'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,9 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Mic, PhoneOff, Loader2 } from 'lucide-react'
 
 export default function VoiceInterface() {
-  const { setCurrentSection, voiceCall, startVoiceCall, endVoiceCall, addTranscript } = useAppStore()
+  const { setCurrentSection, voiceCall, startVoiceCall, endVoiceCall, addTranscript, apiKeys } = useAppStore()
   const [isInitializing, setIsInitializing] = useState(false)
-  const vapiRef = useRef<any>(null)
+  const vapiRef = useRef<Vapi | null>(null)
 
   // Placeholder waveform animation
   const [waveformBars, setWaveformBars] = useState<number[]>(new Array(40).fill(20))
@@ -27,19 +28,76 @@ export default function VoiceInterface() {
     }
   }, [voiceCall.isActive])
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (vapiRef.current) {
+        vapiRef.current.stop()
+      }
+    }
+  }, [])
+
   const handleStartCall = async () => {
     setIsInitializing(true)
-    startVoiceCall()
 
-    // TODO: Initialize VAPI SDK
-    // This is a placeholder - integrate with actual VAPI when API key is provided
+    try {
+      // Use provided VAPI credentials
+      const publicKey = apiKeys.vapi || '58f63a6f-6694-4fe3-8f72-fea362908803'
+      const assistantId = apiKeys.vapiAssistantId || '00788639-dd74-48ec-aa8b-a6572d70e45b'
 
-    // Simulate call start for demo
-    setTimeout(() => {
+      // Initialize VAPI SDK
+      if (!vapiRef.current) {
+        vapiRef.current = new Vapi(publicKey)
+
+        // Set up event handlers
+        vapiRef.current.on('call-start', () => {
+          console.log('Call started')
+          startVoiceCall()
+          setIsInitializing(false)
+          addTranscript('System: Call connected with Fabio')
+        })
+
+        vapiRef.current.on('call-end', () => {
+          console.log('Call ended')
+          endVoiceCall()
+          addTranscript('System: Call ended')
+        })
+
+        vapiRef.current.on('speech-start', () => {
+          console.log('Assistant started speaking')
+        })
+
+        vapiRef.current.on('speech-end', () => {
+          console.log('Assistant stopped speaking')
+        })
+
+        vapiRef.current.on('message', (message: any) => {
+          console.log('Message received:', message)
+
+          // Handle transcript messages
+          if (message.type === 'transcript' && message.transcriptType === 'final') {
+            const role = message.role === 'user' ? 'You' : 'Fabio'
+            addTranscript(`${role}: ${message.transcript}`)
+          }
+        })
+
+        vapiRef.current.on('error', (error: any) => {
+          console.error('VAPI error:', error)
+          addTranscript(`System: Error - ${error.message || 'Connection failed'}`)
+          setIsInitializing(false)
+          endVoiceCall()
+        })
+      }
+
+      // Start the call with Fabio assistant
+      await vapiRef.current.start(assistantId)
+
+    } catch (error: any) {
+      console.error('Failed to start call:', error)
+      addTranscript(`System: Failed to start call - ${error.message || 'Unknown error'}`)
       setIsInitializing(false)
-      addTranscript('System: Call connected (demo mode)')
-      addTranscript('System: Say "Tell me about wire gauges" or "What NEC code covers GFCI?"')
-    }, 1500)
+      endVoiceCall()
+    }
   }
 
   const handleEndCall = () => {
@@ -155,17 +213,17 @@ export default function VoiceInterface() {
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-6">
               <h3 className="font-semibold text-foreground mb-2">
-                Voice Assistant Features
+                Meet Fabio - Your Italian Master Craftsman
               </h3>
               <ul className="text-sm text-muted-foreground space-y-2">
-                <li>Ask about construction codes and regulations</li>
-                <li>Get material recommendations and calculations</li>
-                <li>Learn installation procedures and best practices</li>
-                <li>Search the construction knowledge database</li>
+                <li>🔧 Ask about construction codes and regulations (NEC, OSHA, IBC)</li>
+                <li>📐 Get material recommendations and calculations</li>
+                <li>⚡ Learn installation procedures and best practices</li>
+                <li>🏗️ Search the construction knowledge database</li>
+                <li>💡 Voice-activated assistant for hands-free support</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border">
-                To enable real voice calls, add your VAPI API key in settings.
-                Currently running in demo mode.
+                Powered by VAPI AI. Fabio responds with warmth, expertise, and a touch of Italian charm.
               </p>
             </CardContent>
           </Card>
