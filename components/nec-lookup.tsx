@@ -1,17 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAppStore } from '@/lib/store'
+import { useAppStore, NECCode } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Search, Bookmark, Loader2 } from 'lucide-react'
-
-interface NECCode {
-  code: string
-  title: string
-  description: string
-}
 
 export default function NECLookup() {
   const { setCurrentSection, bookmarkedCodes, addBookmark, removeBookmark } = useAppStore()
@@ -44,7 +38,7 @@ export default function NECLookup() {
   }
 
   const isBookmarked = (code: string) => {
-    return bookmarkedCodes.some(c => c.code === code)
+    return bookmarkedCodes.some((c: NECCode) => c.code === code)
   }
 
   const toggleBookmark = (necCode: NECCode) => {
@@ -127,7 +121,7 @@ export default function NECLookup() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {displayCodes.map((necCode) => (
+              {displayCodes.map((necCode: NECCode) => (
                 <Card key={necCode.code} className="hover:shadow-md transition-shadow">
                   <CardHeader>
                     <div className="flex items-start justify-between gap-4">

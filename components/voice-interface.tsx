@@ -236,7 +236,7 @@ export default function VoiceInterface() {
               <CardContent className="p-6">
                 <h3 className="font-semibold text-foreground mb-4">Live Transcript</h3>
                 <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {voiceCall.transcript.map((text, index) => (
+                  {voiceCall.transcript.map((text: string, index: number) => (
                     <div
                       key={index}
                       className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg"
