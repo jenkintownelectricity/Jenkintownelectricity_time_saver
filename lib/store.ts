@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs'
+export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings'
 
 export interface VoiceCallState {
   isActive: boolean
@@ -47,12 +47,24 @@ interface AppState {
   addBookmark: (code: NECCode) => void
   removeBookmark: (codeNumber: string) => void
   
-  // API Keys (stored in memory only, user will provide)
+  // API Keys & Settings
   apiKeys: {
     vapi: string | null
+    vapiAssistantId: string | null
     anthropic: string | null
   }
-  setApiKey: (key: 'vapi' | 'anthropic', value: string) => void
+  integrations: {
+    microsoft: { enabled: boolean; clientId: string | null; tenantId: string | null }
+    google: { enabled: boolean; clientId: string | null; apiKey: string | null }
+    zapier: { enabled: boolean; webhookUrl: string | null; apiKey: string | null }
+    make: { enabled: boolean; webhookUrl: string | null; apiKey: string | null }
+    slack: { enabled: boolean; webhookUrl: string | null; botToken: string | null }
+    email: { enabled: boolean; smtpHost: string | null; smtpPort: string | null; username: string | null }
+  }
+  setApiKey: (key: string, value: string) => void
+  setIntegration: (platform: string, config: any) => void
+  loadSettings: () => void
+  saveSettings: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -109,12 +121,60 @@ export const useAppStore = create<AppState>((set) => ({
     bookmarkedCodes: state.bookmarkedCodes.filter(code => code.code !== codeNumber)
   })),
   
-  // API Keys
+  // API Keys & Settings
   apiKeys: {
     vapi: null,
+    vapiAssistantId: null,
     anthropic: null,
   },
-  setApiKey: (key, value) => set((state) => ({
-    apiKeys: { ...state.apiKeys, [key]: value }
-  })),
+  integrations: {
+    microsoft: { enabled: false, clientId: null, tenantId: null },
+    google: { enabled: false, clientId: null, apiKey: null },
+    zapier: { enabled: false, webhookUrl: null, apiKey: null },
+    make: { enabled: false, webhookUrl: null, apiKey: null },
+    slack: { enabled: false, webhookUrl: null, botToken: null },
+    email: { enabled: false, smtpHost: null, smtpPort: null, username: null },
+  },
+  setApiKey: (key, value) => {
+    set((state) => ({
+      apiKeys: { ...state.apiKeys, [key]: value }
+    }))
+    // Auto-save to localStorage
+    setTimeout(() => {
+      const state = useAppStore.getState()
+      state.saveSettings()
+    }, 0)
+  },
+  setIntegration: (platform, config) => {
+    set((state) => ({
+      integrations: {
+        ...state.integrations,
+        [platform]: { ...state.integrations[platform as keyof typeof state.integrations], ...config }
+      }
+    }))
+    // Auto-save to localStorage
+    setTimeout(() => {
+      const state = useAppStore.getState()
+      state.saveSettings()
+    }, 0)
+  },
+  loadSettings: () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('appio-settings')
+      if (saved) {
+        try {
+          const { apiKeys, integrations } = JSON.parse(saved)
+          set({ apiKeys, integrations })
+        } catch (e) {
+          console.error('Failed to load settings:', e)
+        }
+      }
+    }
+  },
+  saveSettings: () => {
+    if (typeof window !== 'undefined') {
+      const { apiKeys, integrations } = useAppStore.getState()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations }))
+    }
+  },
 }))

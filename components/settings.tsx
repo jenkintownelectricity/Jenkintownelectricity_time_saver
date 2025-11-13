@@ -1,0 +1,473 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useAppStore } from '@/lib/store'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { 
+  ArrowLeft, 
+  Key, 
+  Plug, 
+  Check, 
+  AlertCircle,
+  Mic,
+  Camera,
+  Mail,
+  Workflow
+} from 'lucide-react'
+
+export default function Settings() {
+  const { setCurrentSection, apiKeys, integrations, setApiKey, setIntegration, loadSettings } = useAppStore()
+  const [activeTab, setActiveTab] = useState('api-keys')
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  // API Keys Section
+  const ApiKeysTab = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Mic className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>VAPI Voice AI</CardTitle>
+              <CardDescription>Real-time voice conversation assistant</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Public API Key
+            </label>
+            <Input
+              type="password"
+              placeholder="Enter your VAPI public key"
+              value={apiKeys.vapi || ''}
+              onChange={(e) => setApiKey('vapi', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Get your key from <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai</a>
+            </p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Assistant ID (Optional)
+            </label>
+            <Input
+              type="text"
+              placeholder="Enter your VAPI assistant ID"
+              value={apiKeys.vapiAssistantId || ''}
+              onChange={(e) => setApiKey('vapiAssistantId', e.target.value)}
+            />
+          </div>
+          {apiKeys.vapi && (
+            <Badge variant="default" className="gap-1">
+              <Check className="w-3 h-3" />
+              Connected
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Camera className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Anthropic Claude</CardTitle>
+              <CardDescription>AI-powered photo and visual analysis</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              API Key
+            </label>
+            <Input
+              type="password"
+              placeholder="Enter your Anthropic API key"
+              value={apiKeys.anthropic || ''}
+              onChange={(e) => setApiKey('anthropic', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Get your key from <a href="https://console.anthropic.com" target="_blank" rel="noopener" className="text-primary hover:underline">console.anthropic.com</a>
+            </p>
+          </div>
+          {apiKeys.anthropic && (
+            <Badge variant="default" className="gap-1">
+              <Check className="w-3 h-3" />
+              Connected
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+
+  // Integrations Section
+  const IntegrationsTab = () => (
+    <div className="space-y-6">
+      {/* Microsoft Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#0078D4]/10 flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 23 23" fill="none">
+                  <path d="M0 0h11v11H0z" fill="#f25022"/>
+                  <path d="M12 0h11v11H12z" fill="#00a4ef"/>
+                  <path d="M0 12h11v11H0z" fill="#7fba00"/>
+                  <path d="M12 12h11v11H12z" fill="#ffb900"/>
+                </svg>
+              </div>
+              <div>
+                <CardTitle>Microsoft 365</CardTitle>
+                <CardDescription>Outlook, Teams, OneDrive, SharePoint</CardDescription>
+              </div>
+            </div>
+            <Badge variant={integrations.microsoft.enabled ? "default" : "outline"}>
+              {integrations.microsoft.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Client ID</label>
+            <Input
+              placeholder="Enter Microsoft Client ID"
+              value={integrations.microsoft.clientId || ''}
+              onChange={(e) => setIntegration('microsoft', { clientId: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Tenant ID</label>
+            <Input
+              placeholder="Enter Microsoft Tenant ID"
+              value={integrations.microsoft.tenantId || ''}
+              onChange={(e) => setIntegration('microsoft', { tenantId: e.target.value })}
+            />
+          </div>
+          <Button
+            variant={integrations.microsoft.enabled ? "outline" : "default"}
+            onClick={() => setIntegration('microsoft', { enabled: !integrations.microsoft.enabled })}
+          >
+            {integrations.microsoft.enabled ? "Disable" : "Enable"} Integration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Google Workspace Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#4285F4]/10 flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+              </div>
+              <div>
+                <CardTitle>Google Workspace</CardTitle>
+                <CardDescription>Gmail, Drive, Calendar, Sheets</CardDescription>
+              </div>
+            </div>
+            <Badge variant={integrations.google.enabled ? "default" : "outline"}>
+              {integrations.google.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Client ID</label>
+            <Input
+              placeholder="Enter Google Client ID"
+              value={integrations.google.clientId || ''}
+              onChange={(e) => setIntegration('google', { clientId: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">API Key</label>
+            <Input
+              type="password"
+              placeholder="Enter Google API Key"
+              value={integrations.google.apiKey || ''}
+              onChange={(e) => setIntegration('google', { apiKey: e.target.value })}
+            />
+          </div>
+          <Button
+            variant={integrations.google.enabled ? "outline" : "default"}
+            onClick={() => setIntegration('google', { enabled: !integrations.google.enabled })}
+          >
+            {integrations.google.enabled ? "Disable" : "Enable"} Integration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Zapier Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#FF4A00]/10 flex items-center justify-center">
+                <Workflow className="w-5 h-5 text-[#FF4A00]" />
+              </div>
+              <div>
+                <CardTitle>Zapier</CardTitle>
+                <CardDescription>Connect 5000+ apps with automation</CardDescription>
+              </div>
+            </div>
+            <Badge variant={integrations.zapier.enabled ? "default" : "outline"}>
+              {integrations.zapier.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Webhook URL</label>
+            <Input
+              placeholder="https://hooks.zapier.com/..."
+              value={integrations.zapier.webhookUrl || ''}
+              onChange={(e) => setIntegration('zapier', { webhookUrl: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">API Key (Optional)</label>
+            <Input
+              type="password"
+              placeholder="Enter Zapier API key"
+              value={integrations.zapier.apiKey || ''}
+              onChange={(e) => setIntegration('zapier', { apiKey: e.target.value })}
+            />
+          </div>
+          <Button
+            variant={integrations.zapier.enabled ? "outline" : "default"}
+            onClick={() => setIntegration('zapier', { enabled: !integrations.zapier.enabled })}
+          >
+            {integrations.zapier.enabled ? "Disable" : "Enable"} Integration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Make (Integromat) Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#6D00CC]/10 flex items-center justify-center">
+                <Workflow className="w-5 h-5 text-[#6D00CC]" />
+              </div>
+              <div>
+                <CardTitle>Make</CardTitle>
+                <CardDescription>Visual automation platform (formerly Integromat)</CardDescription>
+              </div>
+            </div>
+            <Badge variant={integrations.make.enabled ? "default" : "outline"}>
+              {integrations.make.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Webhook URL</label>
+            <Input
+              placeholder="https://hook.make.com/..."
+              value={integrations.make.webhookUrl || ''}
+              onChange={(e) => setIntegration('make', { webhookUrl: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">API Key (Optional)</label>
+            <Input
+              type="password"
+              placeholder="Enter Make API key"
+              value={integrations.make.apiKey || ''}
+              onChange={(e) => setIntegration('make', { apiKey: e.target.value })}
+            />
+          </div>
+          <Button
+            variant={integrations.make.enabled ? "outline" : "default"}
+            onClick={() => setIntegration('make', { enabled: !integrations.make.enabled })}
+          >
+            {integrations.make.enabled ? "Disable" : "Enable"} Integration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Slack Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#4A154B]/10 flex items-center justify-center">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" fill="#4A154B"/>
+                </svg>
+              </div>
+              <div>
+                <CardTitle>Slack</CardTitle>
+                <CardDescription>Team communication and notifications</CardDescription>
+              </div>
+            </div>
+            <Badge variant={integrations.slack.enabled ? "default" : "outline"}>
+              {integrations.slack.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Webhook URL</label>
+            <Input
+              placeholder="https://hooks.slack.com/..."
+              value={integrations.slack.webhookUrl || ''}
+              onChange={(e) => setIntegration('slack', { webhookUrl: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Bot Token (Optional)</label>
+            <Input
+              type="password"
+              placeholder="xoxb-..."
+              value={integrations.slack.botToken || ''}
+              onChange={(e) => setIntegration('slack', { botToken: e.target.value })}
+            />
+          </div>
+          <Button
+            variant={integrations.slack.enabled ? "outline" : "default"}
+            onClick={() => setIntegration('slack', { enabled: !integrations.slack.enabled })}
+          >
+            {integrations.slack.enabled ? "Disable" : "Enable"} Integration
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Email Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Email (SMTP)</CardTitle>
+                <CardDescription>Send reports and notifications via email</CardDescription>
+              </div>
+            </div>
+            <Badge variant={integrations.email.enabled ? "default" : "outline"}>
+              {integrations.email.enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">SMTP Host</label>
+              <Input
+                placeholder="smtp.gmail.com"
+                value={integrations.email.smtpHost || ''}
+                onChange={(e) => setIntegration('email', { smtpHost: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">Port</label>
+              <Input
+                placeholder="587"
+                value={integrations.email.smtpPort || ''}
+                onChange={(e) => setIntegration('email', { smtpPort: e.target.value })}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Username</label>
+            <Input
+              placeholder="your@email.com"
+              value={integrations.email.username || ''}
+              onChange={(e) => setIntegration('email', { username: e.target.value })}
+            />
+          </div>
+          <Button
+            variant={integrations.email.enabled ? "outline" : "default"}
+            onClick={() => setIntegration('email', { enabled: !integrations.email.enabled })}
+          >
+            {integrations.email.enabled ? "Disable" : "Enable"} Integration
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCurrentSection('home')}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Settings</h1>
+              <p className="text-xs text-muted-foreground">Configure API keys and integrations</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full mb-8">
+            <TabsTrigger value="api-keys" className="flex-1">
+              <Key className="w-4 h-4 mr-2" />
+              API Keys
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex-1">
+              <Plug className="w-4 h-4 mr-2" />
+              Integrations
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="api-keys">
+            <ApiKeysTab />
+          </TabsContent>
+
+          <TabsContent value="integrations">
+            <IntegrationsTab />
+          </TabsContent>
+        </Tabs>
+
+        <Card className="mt-8 bg-primary/5 border-primary/20">
+          <CardContent className="p-6">
+            <div className="flex gap-3">
+              <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-foreground mb-2">Security Note</h3>
+                <p className="text-sm text-muted-foreground">
+                  All API keys and credentials are stored locally in your browser. 
+                  They are never sent to our servers. For production use, consider implementing 
+                  proper authentication and storing credentials server-side.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}
