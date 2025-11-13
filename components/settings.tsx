@@ -7,20 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { 
-  ArrowLeft, 
-  Key, 
-  Plug, 
-  Check, 
+import {
+  ArrowLeft,
+  Key,
+  Plug,
+  Check,
   AlertCircle,
   Mic,
   Camera,
   Mail,
-  Workflow
+  Workflow,
+  Settings as SettingsIcon,
+  Shield
 } from 'lucide-react'
 
 export default function Settings() {
-  const { setCurrentSection, apiKeys, integrations, setApiKey, setIntegration, loadSettings } = useAppStore()
+  const { setCurrentSection, apiKeys, integrations, ownerSettings, setApiKey, setIntegration, setOwnerSetting, loadSettings } = useAppStore()
   const [activeTab, setActiveTab] = useState('api-keys')
 
   useEffect(() => {
@@ -45,33 +47,41 @@ export default function Settings() {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">
-              Public API Key
+              Public API Key <span className="text-red-500">*</span>
             </label>
             <Input
               type="password"
-              placeholder="Enter your VAPI public key"
+              placeholder="Enter your VAPI public key (required)"
               value={apiKeys.vapi || ''}
               onChange={(e) => setApiKey('vapi', e.target.value)}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Get your key from <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai</a>
+              Required for voice calls. Get your key from <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai</a>
             </p>
           </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">
-              Assistant ID (Optional)
+              Assistant ID <span className="text-red-500">*</span>
             </label>
             <Input
               type="text"
-              placeholder="Enter your VAPI assistant ID"
+              placeholder="Enter your VAPI assistant ID (required)"
               value={apiKeys.vapiAssistantId || ''}
               onChange={(e) => setApiKey('vapiAssistantId', e.target.value)}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Create your assistant at <a href="https://vapi.ai/dashboard" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai/dashboard</a>
+            </p>
           </div>
-          {apiKeys.vapi && (
+          {apiKeys.vapi && apiKeys.vapiAssistantId ? (
             <Badge variant="default" className="gap-1">
               <Check className="w-3 h-3" />
               Connected
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1">
+              <AlertCircle className="w-3 h-3" />
+              Keys Required
             </Badge>
           )}
         </CardContent>
@@ -167,55 +177,11 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Google Workspace Integration */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#4285F4]/10 flex items-center justify-center">
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-              </div>
-              <div>
-                <CardTitle>Google Workspace</CardTitle>
-                <CardDescription>Gmail, Drive, Calendar, Sheets</CardDescription>
-              </div>
-            </div>
-            <Badge variant={integrations.google.enabled ? "default" : "outline"}>
-              {integrations.google.enabled ? "Enabled" : "Disabled"}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Client ID</label>
-            <Input
-              placeholder="Enter Google Client ID"
-              value={integrations.google.clientId || ''}
-              onChange={(e) => setIntegration('google', { clientId: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">API Key</label>
-            <Input
-              type="password"
-              placeholder="Enter Google API Key"
-              value={integrations.google.apiKey || ''}
-              onChange={(e) => setIntegration('google', { apiKey: e.target.value })}
-            />
-          </div>
-          <Button
-            variant={integrations.google.enabled ? "outline" : "default"}
-            onClick={() => setIntegration('google', { enabled: !integrations.google.enabled })}
-          >
-            {integrations.google.enabled ? "Disable" : "Enable"} Integration
-          </Button>
-        </CardContent>
-      </Card>
+      {/* TODO: Update integrations tab with research-based priorities
+          - Phase 1: QuickBooks, Google Calendar, Stripe, Gmail
+          - Phase 2: Zapier, Mailchimp, Google Drive
+          - Phase 3: Slack, MS Teams, NiceJob, Broadly
+      */}
 
       {/* Zapier Integration */}
       <Card>
@@ -410,6 +376,103 @@ export default function Settings() {
     </div>
   )
 
+  // Admin/Owner Settings Tab
+  const AdminTab = () => (
+    <div className="space-y-6">
+      <Card className="bg-orange-500/10 border-orange-500/30">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Shield className="w-6 h-6 text-orange-500" />
+            <div>
+              <CardTitle>Owner/Admin Settings</CardTitle>
+              <CardDescription>Control default API keys and billing model for your users</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">Provide Default API Keys</h3>
+              <p className="text-sm text-muted-foreground">
+                When enabled, users without their own API keys will use your default keys (you pay for API usage).
+                When disabled, users must provide their own API keys to use the service.
+              </p>
+            </div>
+            <Button
+              variant={ownerSettings.provideDefaultKeys ? "default" : "outline"}
+              onClick={() => setOwnerSetting('provideDefaultKeys', !ownerSettings.provideDefaultKeys)}
+              className="ml-4"
+            >
+              {ownerSettings.provideDefaultKeys ? "ON" : "OFF"}
+            </Button>
+          </div>
+
+          {ownerSettings.provideDefaultKeys && (
+            <div className="space-y-4 p-4 bg-background rounded-lg border">
+              <h3 className="font-semibold text-foreground">Your Default API Keys</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                These keys will be used as fallback when users haven't configured their own.
+              </p>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Default VAPI Public Key
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Enter your VAPI public key"
+                  value={ownerSettings.defaultVapiKey}
+                  onChange={(e) => setOwnerSetting('defaultVapiKey', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Default VAPI Assistant ID
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter your VAPI assistant ID"
+                  value={ownerSettings.defaultVapiAssistantId}
+                  onChange={(e) => setOwnerSetting('defaultVapiAssistantId', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Default Anthropic API Key (Optional)
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Enter your Anthropic API key"
+                  value={ownerSettings.defaultAnthropicKey}
+                  onChange={(e) => setOwnerSetting('defaultAnthropicKey', e.target.value)}
+                />
+              </div>
+
+              {ownerSettings.defaultVapiKey && ownerSettings.defaultVapiAssistantId && (
+                <Badge variant="default" className="gap-1">
+                  <Check className="w-3 h-3" />
+                  Default Keys Configured
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <Card className="bg-blue-500/5 border-blue-500/20">
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-foreground mb-2 text-sm">💡 Business Models</h3>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li><strong>ON:</strong> Freemium - You cover API costs for users. Charge subscription to offset.</li>
+                <li><strong>OFF:</strong> BYOK (Bring Your Own Keys) - Users pay their own API bills.</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </CardContent>
+      </Card>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -441,6 +504,10 @@ export default function Settings() {
               <Plug className="w-4 h-4 mr-2" />
               Integrations
             </TabsTrigger>
+            <TabsTrigger value="admin" className="flex-1">
+              <Shield className="w-4 h-4 mr-2" />
+              Admin
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="api-keys">
@@ -449,6 +516,10 @@ export default function Settings() {
 
           <TabsContent value="integrations">
             <IntegrationsTab />
+          </TabsContent>
+
+          <TabsContent value="admin">
+            <AdminTab />
           </TabsContent>
         </Tabs>
 

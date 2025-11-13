@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { EntityType, EntityInstance, DEFAULT_ENTITIES } from './entities'
 
 export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings'
 
@@ -47,27 +48,65 @@ interface AppState {
   addBookmark: (code: NECCode) => void
   removeBookmark: (codeNumber: string) => void
   
+  // Entity Management System
+  entityTypes: { [key: string]: EntityType }
+  entities: EntityInstance[]
+  currentEntityView: string | null
+  currentEntityId: string | null
+  setEntityType: (entityTypeId: string, config: Partial<EntityType>) => void
+  createEntity: (entityTypeId: string, data: any) => void
+  updateEntity: (id: string, data: any) => void
+  deleteEntity: (id: string) => void
+  getEntity: (id: string) => EntityInstance | undefined
+  getEntitiesByType: (entityTypeId: string) => EntityInstance[]
+  setCurrentEntityView: (entityTypeId: string | null, entityId?: string | null) => void
+
   // API Keys & Settings
   apiKeys: {
     vapi: string | null
     vapiAssistantId: string | null
     anthropic: string | null
+    quickbooks: string | null
+    stripe: string | null
+  }
+  // Owner/Admin Settings
+  ownerSettings: {
+    provideDefaultKeys: boolean // If true, use owner's keys as fallback
+    defaultVapiKey: string
+    defaultVapiAssistantId: string
+    defaultAnthropicKey: string
   }
   integrations: {
-    microsoft: { enabled: boolean; clientId: string | null; tenantId: string | null }
-    google: { enabled: boolean; clientId: string | null; apiKey: string | null }
+    // Phase 1: Core Foundation (Based on customer research - absolute priorities)
+    quickbooks: { enabled: boolean; companyId: string | null; accessToken: string | null; refreshToken: string | null; realmId: string | null }
+    googleCalendar: { enabled: boolean; calendarId: string | null; apiKey: string | null; oauth: string | null }
+    stripe: { enabled: boolean; publishableKey: string | null; secretKey: string | null; webhookSecret: string | null }
+    gmail: { enabled: boolean; email: string | null; apiKey: string | null; oauth: string | null }
+
+    // Phase 2: Growth Enablers
     zapier: { enabled: boolean; webhookUrl: string | null; apiKey: string | null }
+    mailchimp: { enabled: boolean; apiKey: string | null; listId: string | null; serverPrefix: string | null }
+    googleDrive: { enabled: boolean; folderId: string | null; apiKey: string | null; oauth: string | null }
+
+    // Phase 3: Team & Reputation
+    slack: { enabled: boolean; webhookUrl: string | null; botToken: string | null; channelId: string | null }
+    microsoftTeams: { enabled: boolean; webhookUrl: string | null; tenantId: string | null }
+    nicejob: { enabled: boolean; apiKey: string | null; companyId: string | null }
+    broadly: { enabled: boolean; apiKey: string | null; locationId: string | null }
+
+    // Legacy/Other
+    microsoft: { enabled: boolean; clientId: string | null; tenantId: string | null }
     make: { enabled: boolean; webhookUrl: string | null; apiKey: string | null }
-    slack: { enabled: boolean; webhookUrl: string | null; botToken: string | null }
     email: { enabled: boolean; smtpHost: string | null; smtpPort: string | null; username: string | null }
   }
   setApiKey: (key: string, value: string) => void
+  setOwnerSetting: (key: string, value: any) => void
   setIntegration: (platform: string, config: any) => void
   loadSettings: () => void
   saveSettings: () => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   // Navigation
   currentSection: 'home',
   setCurrentSection: (section) => set({ currentSection: section }),
@@ -120,19 +159,89 @@ export const useAppStore = create<AppState>((set) => ({
   removeBookmark: (codeNumber) => set((state) => ({
     bookmarkedCodes: state.bookmarkedCodes.filter(code => code.code !== codeNumber)
   })),
-  
+
+  // Entity Management System
+  entityTypes: DEFAULT_ENTITIES,
+  entities: [],
+  currentEntityView: null,
+  currentEntityId: null,
+  setEntityType: (entityTypeId, config) => set((state) => ({
+    entityTypes: {
+      ...state.entityTypes,
+      [entityTypeId]: { ...state.entityTypes[entityTypeId], ...config }
+    }
+  })),
+  createEntity: (entityTypeId, data) => set((state) => {
+    const newEntity: EntityInstance = {
+      id: `${entityTypeId}_${Date.now()}`,
+      entityType: entityTypeId,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      status: state.entityTypes[entityTypeId]?.fields.find(f => f.name === 'status')?.defaultValue || 'active',
+      data,
+      relationships: {}
+    }
+    return { entities: [...state.entities, newEntity] }
+  }),
+  updateEntity: (id, data) => set((state) => ({
+    entities: state.entities.map(entity =>
+      entity.id === id
+        ? { ...entity, data: { ...entity.data, ...data }, updatedAt: Date.now() }
+        : entity
+    )
+  })),
+  deleteEntity: (id) => set((state) => ({
+    entities: state.entities.filter(entity => entity.id !== id)
+  })),
+  getEntity: (id) => {
+    const state = get()
+    return state.entities.find(entity => entity.id === id)
+  },
+  getEntitiesByType: (entityTypeId) => {
+    const state = get()
+    return state.entities.filter(entity => entity.entityType === entityTypeId)
+  },
+  setCurrentEntityView: (entityTypeId, entityId = null) => set({
+    currentEntityView: entityTypeId,
+    currentEntityId: entityId
+  }),
+
   // API Keys & Settings
   apiKeys: {
     vapi: null,
     vapiAssistantId: null,
     anthropic: null,
+    quickbooks: null,
+    stripe: null,
+  },
+  // Owner/Admin Settings - these are YOUR credentials
+  ownerSettings: {
+    provideDefaultKeys: true, // Toggle this to enable/disable fallback to your keys
+    defaultVapiKey: '58f63a6f-6694-4fe3-8f72-fea362908803',
+    defaultVapiAssistantId: '00788639-dd74-48ec-aa8b-a6572d70e45b',
+    defaultAnthropicKey: '', // Add your Anthropic key here if you want
   },
   integrations: {
-    microsoft: { enabled: false, clientId: null, tenantId: null },
-    google: { enabled: false, clientId: null, apiKey: null },
+    // Phase 1: Core Foundation (82.4% of contractors need these)
+    quickbooks: { enabled: false, companyId: null, accessToken: null, refreshToken: null, realmId: null },
+    googleCalendar: { enabled: false, calendarId: null, apiKey: null, oauth: null },
+    stripe: { enabled: false, publishableKey: null, secretKey: null, webhookSecret: null },
+    gmail: { enabled: false, email: null, apiKey: null, oauth: null },
+
+    // Phase 2: Growth Enablers
     zapier: { enabled: false, webhookUrl: null, apiKey: null },
+    mailchimp: { enabled: false, apiKey: null, listId: null, serverPrefix: null },
+    googleDrive: { enabled: false, folderId: null, apiKey: null, oauth: null },
+
+    // Phase 3: Team & Reputation
+    slack: { enabled: false, webhookUrl: null, botToken: null, channelId: null },
+    microsoftTeams: { enabled: false, webhookUrl: null, tenantId: null },
+    nicejob: { enabled: false, apiKey: null, companyId: null },
+    broadly: { enabled: false, apiKey: null, locationId: null },
+
+    // Legacy
+    microsoft: { enabled: false, clientId: null, tenantId: null },
     make: { enabled: false, webhookUrl: null, apiKey: null },
-    slack: { enabled: false, webhookUrl: null, botToken: null },
     email: { enabled: false, smtpHost: null, smtpPort: null, username: null },
   },
   setApiKey: (key, value) => {
@@ -141,8 +250,16 @@ export const useAppStore = create<AppState>((set) => ({
     }))
     // Auto-save to localStorage
     setTimeout(() => {
-      const state = useAppStore.getState()
-      state.saveSettings()
+      get().saveSettings()
+    }, 0)
+  },
+  setOwnerSetting: (key, value) => {
+    set((state) => ({
+      ownerSettings: { ...state.ownerSettings, [key]: value }
+    }))
+    // Auto-save to localStorage
+    setTimeout(() => {
+      get().saveSettings()
     }, 0)
   },
   setIntegration: (platform, config) => {
@@ -154,8 +271,7 @@ export const useAppStore = create<AppState>((set) => ({
     }))
     // Auto-save to localStorage
     setTimeout(() => {
-      const state = useAppStore.getState()
-      state.saveSettings()
+      get().saveSettings()
     }, 0)
   },
   loadSettings: () => {
@@ -163,8 +279,15 @@ export const useAppStore = create<AppState>((set) => ({
       const saved = localStorage.getItem('appio-settings')
       if (saved) {
         try {
-          const { apiKeys, integrations } = JSON.parse(saved)
-          set({ apiKeys, integrations })
+          const parsed = JSON.parse(saved)
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes } = parsed
+          set({
+            apiKeys,
+            integrations,
+            ...(ownerSettings && { ownerSettings }),
+            ...(entities && { entities }),
+            ...(entityTypes && { entityTypes })
+          })
         } catch (e) {
           console.error('Failed to load settings:', e)
         }
@@ -173,8 +296,8 @@ export const useAppStore = create<AppState>((set) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations } = useAppStore.getState()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes }))
     }
   },
 }))
