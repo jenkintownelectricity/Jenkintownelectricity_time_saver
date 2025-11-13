@@ -49,21 +49,21 @@ export default function Settings() {
             </label>
             <Input
               type="password"
-              placeholder="Enter your VAPI public key"
+              placeholder="58f63a6f-6694-4fe3-8f72-fea362908803 (default)"
               value={apiKeys.vapi || ''}
               onChange={(e) => setApiKey('vapi', e.target.value)}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Get your key from <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai</a>
+              Using Fabio assistant by default. Get your own key from <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">vapi.ai</a>
             </p>
           </div>
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">
-              Assistant ID (Optional)
+              Assistant ID
             </label>
             <Input
               type="text"
-              placeholder="Enter your VAPI assistant ID"
+              placeholder="00788639-dd74-48ec-aa8b-a6572d70e45b (Fabio)"
               value={apiKeys.vapiAssistantId || ''}
               onChange={(e) => setApiKey('vapiAssistantId', e.target.value)}
             />
