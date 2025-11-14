@@ -20,6 +20,7 @@ import {
   Copy,
   ArrowRight
 } from 'lucide-react'
+import { PDFDownloadLink } from '@react-pdf/renderer'
 import { useAppStore } from '@/lib/store'
 import LineItemEditor from './line-item-editor'
 import {
@@ -27,6 +28,7 @@ import {
   EstimateDocument,
   calculateDocumentTotals
 } from '@/lib/line-items'
+import { EstimatePDF } from './pdf/estimate-pdf'
 
 export default function Estimates() {
   const {
@@ -36,6 +38,8 @@ export default function Estimates() {
     updateEstimate,
     deleteEstimate,
     convertEstimateToWorkOrder,
+    companyProfiles,
+    currentCompanyId,
     setCurrentSection,
     saveSettings
   } = useAppStore()
@@ -334,6 +338,30 @@ export default function Estimates() {
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>
+                      <PDFDownloadLink
+                        document={
+                          <EstimatePDF
+                            estimate={estimate}
+                            company={
+                              companyProfiles.find(p => p.id === (estimate.companyId || currentCompanyId)) ||
+                              companyProfiles.find(p => p.isDefault) ||
+                              companyProfiles[0]
+                            }
+                          />
+                        }
+                        fileName={`${estimate.number}-estimate.pdf`}
+                      >
+                        {({ loading }) => (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={loading}
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            {loading ? 'Generating...' : 'PDF'}
+                          </Button>
+                        )}
+                      </PDFDownloadLink>
                       {estimate.status === 'Approved' && (
                         <Button
                           variant="default"

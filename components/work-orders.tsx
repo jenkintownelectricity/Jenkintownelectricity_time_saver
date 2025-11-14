@@ -15,8 +15,10 @@ import {
   Check,
   ArrowRight,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Download
 } from 'lucide-react'
+import { PDFDownloadLink } from '@react-pdf/renderer'
 import { useAppStore } from '@/lib/store'
 import LineItemEditor from './line-item-editor'
 import {
@@ -24,6 +26,7 @@ import {
   WorkOrderDocument,
   calculateDocumentTotals
 } from '@/lib/line-items'
+import { WorkOrderPDF } from './pdf/work-order-pdf'
 
 export default function WorkOrders() {
   const {
@@ -33,6 +36,8 @@ export default function WorkOrders() {
     deleteWorkOrder,
     addWorkOrder,
     convertWorkOrderToInvoice,
+    companyProfiles,
+    currentCompanyId,
     setCurrentSection,
     saveSettings
   } = useAppStore()
@@ -340,6 +345,30 @@ export default function WorkOrders() {
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>
+                      <PDFDownloadLink
+                        document={
+                          <WorkOrderPDF
+                            workOrder={wo}
+                            company={
+                              companyProfiles.find(p => p.id === (wo.companyId || currentCompanyId)) ||
+                              companyProfiles.find(p => p.isDefault) ||
+                              companyProfiles[0]
+                            }
+                          />
+                        }
+                        fileName={`${wo.number}-work-order.pdf`}
+                      >
+                        {({ loading }) => (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={loading}
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            {loading ? 'Generating...' : 'PDF'}
+                          </Button>
+                        )}
+                      </PDFDownloadLink>
                       {wo.status === 'Completed' && (
                         <Button
                           variant="default"

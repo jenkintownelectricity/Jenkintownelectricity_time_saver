@@ -18,10 +18,13 @@ import {
   XCircle,
   AlertCircle,
   Eye,
-  ArrowLeft
+  ArrowLeft,
+  Download
 } from 'lucide-react'
+import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InvoiceDocument, calculateDocumentTotals } from '@/lib/line-items'
 import LineItemEditor from '@/components/line-item-editor'
+import { InvoicePDF } from './pdf/invoice-pdf'
 
 type View = 'list' | 'create' | 'edit'
 
@@ -34,6 +37,8 @@ export default function Invoices() {
     getEntitiesByType,
     estimates,
     workOrders,
+    companyProfiles,
+    currentCompanyId,
     setCurrentSection,
     saveSettings
   } = useAppStore()
@@ -377,6 +382,29 @@ export default function Invoices() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
+                        <PDFDownloadLink
+                          document={
+                            <InvoicePDF
+                              invoice={invoice}
+                              company={
+                                companyProfiles.find(p => p.id === (invoice.companyId || currentCompanyId)) ||
+                                companyProfiles.find(p => p.isDefault) ||
+                                companyProfiles[0]
+                              }
+                            />
+                          }
+                          fileName={`${invoice.number}-invoice.pdf`}
+                        >
+                          {({ loading }) => (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={loading}
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </PDFDownloadLink>
                         <Button
                           variant="outline"
                           size="sm"
