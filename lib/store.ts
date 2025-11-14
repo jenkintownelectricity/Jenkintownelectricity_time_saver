@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { EntityType, EntityInstance, DEFAULT_ENTITIES } from './entities'
 
-export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings'
+export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews'
 
 export interface VoiceCallState {
   isActive: boolean

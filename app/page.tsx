@@ -3,12 +3,14 @@
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Camera, Mic, BookOpen, Briefcase, Zap } from 'lucide-react'
+import { Camera, Mic, BookOpen, Briefcase, Zap, DollarSign, Star, QrCode } from 'lucide-react'
 import VoiceInterface from '@/components/voice-interface'
 import PhotoAnalysis from '@/components/photo-analysis'
 import NECLookup from '@/components/nec-lookup'
 import JobsBusiness from '@/components/jobs-business'
 import Settings from '@/components/settings'
+import GetPaidNow from '@/components/get-paid-now'
+import GetReviewsNow from '@/components/get-reviews-now'
 import { useEffect } from 'react'
 
 export default function Home() {
@@ -36,6 +38,14 @@ export default function Home() {
 
   if (currentSection === 'settings') {
     return <Settings />
+  }
+
+  if (currentSection === 'get-paid') {
+    return <GetPaidNow />
+  }
+
+  if (currentSection === 'get-reviews') {
+    return <GetReviewsNow />
   }
 
   return (
@@ -75,6 +85,39 @@ export default function Home() {
           >
             <Mic className="w-8 h-8 mr-3" />
             Talk to AI Assistant
+          </Button>
+        </div>
+
+        {/* Get Paid & Get Reviews - Big Buttons */}
+        <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+          <Button
+            size="xl"
+            onClick={() => setCurrentSection('get-paid')}
+            className="h-24 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 bg-green-600 hover:bg-green-700"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-8 h-8" />
+                <QrCode className="w-6 h-6" />
+              </div>
+              <span>Get Paid Now</span>
+              <span className="text-xs font-normal opacity-90">Share payment links & QR codes</span>
+            </div>
+          </Button>
+
+          <Button
+            size="xl"
+            onClick={() => setCurrentSection('get-reviews')}
+            className="h-24 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 bg-yellow-600 hover:bg-yellow-700"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2">
+                <Star className="w-8 h-8" />
+                <QrCode className="w-6 h-6" />
+              </div>
+              <span>Get Review Now</span>
+              <span className="text-xs font-normal opacity-90">Share review links & QR codes</span>
+            </div>
           </Button>
         </div>
 
