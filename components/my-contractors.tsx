@@ -86,6 +86,14 @@ export default function MyContractors() {
   const [workItems, setWorkItems] = useState<WorkItem[]>([])
   const [selectedContractorId, setSelectedContractorId] = useState<string | null>(null)
   const [currentView, setCurrentView] = useState<'list' | 'contractor'>('list')
+  const [showAddContractor, setShowAddContractor] = useState(false)
+  const [contractorFormData, setContractorFormData] = useState({
+    name: '',
+    company: '',
+    email: '',
+    phone: '',
+    paymentTerms: 'Net 30'
+  })
 
   // Default terms and conditions
   const [defaultTerms, setDefaultTerms] = useState(`Payment Terms: Net 30 days from invoice date
@@ -128,6 +136,33 @@ Change orders require written approval`)
   useEffect(() => {
     saveData()
   }, [contractors, estimates, invoices, workItems, defaultTerms])
+
+  const handleAddContractor = () => {
+    if (!contractorFormData.name || !contractorFormData.company) {
+      alert('Please enter contractor name and company')
+      return
+    }
+
+    const newContractor: Contractor = {
+      id: `contractor_${Date.now()}`,
+      name: contractorFormData.name,
+      company: contractorFormData.company,
+      email: contractorFormData.email,
+      phone: contractorFormData.phone,
+      paymentTerms: contractorFormData.paymentTerms,
+      createdAt: Date.now()
+    }
+
+    setContractors([...contractors, newContractor])
+    setContractorFormData({
+      name: '',
+      company: '',
+      email: '',
+      phone: '',
+      paymentTerms: 'Net 30'
+    })
+    setShowAddContractor(false)
+  }
 
   const handleApproveEstimate = (estimateId: string) => {
     const estimate = estimates.find(e => e.id === estimateId)
@@ -476,7 +511,7 @@ Change orders require written approval`)
                 Contractors I subcontract for
               </p>
             </div>
-            <Button>
+            <Button onClick={() => setShowAddContractor(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Add Contractor
             </Button>
@@ -493,7 +528,7 @@ Change orders require written approval`)
                 <p className="text-muted-foreground mb-4">
                   No contractors yet
                 </p>
-                <Button>
+                <Button onClick={() => setShowAddContractor(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Your First Contractor
                 </Button>
@@ -556,6 +591,93 @@ Change orders require written approval`)
           </Card>
         </div>
       </main>
+
+      {/* Add Contractor Modal */}
+      {showAddContractor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Add Contractor</CardTitle>
+              <CardDescription>Add a contractor you subcontract for</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Contractor Name *</label>
+                <Input
+                  placeholder="John Smith"
+                  value={contractorFormData.name}
+                  onChange={(e) => setContractorFormData({ ...contractorFormData, name: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Company *</label>
+                <Input
+                  placeholder="ABC Construction"
+                  value={contractorFormData.company}
+                  onChange={(e) => setContractorFormData({ ...contractorFormData, company: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Email</label>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={contractorFormData.email}
+                  onChange={(e) => setContractorFormData({ ...contractorFormData, email: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Phone</label>
+                <Input
+                  type="tel"
+                  placeholder="(555) 123-4567"
+                  value={contractorFormData.phone}
+                  onChange={(e) => setContractorFormData({ ...contractorFormData, phone: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Payment Terms</label>
+                <select
+                  value={contractorFormData.paymentTerms}
+                  onChange={(e) => setContractorFormData({ ...contractorFormData, paymentTerms: e.target.value })}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                >
+                  <option value="COD">COD</option>
+                  <option value="Net 15">Net 15</option>
+                  <option value="Net 30">Net 30</option>
+                  <option value="Net 60">Net 60</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddContractor(false)
+                    setContractorFormData({
+                      name: '',
+                      company: '',
+                      email: '',
+                      phone: '',
+                      paymentTerms: 'Net 30'
+                    })
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleAddContractor}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Contractor
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

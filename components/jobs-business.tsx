@@ -153,6 +153,11 @@ export default function JobsBusiness() {
     setCurrentEntityView(entityId, null)
   }
 
+  const handleNewEntity = (entityId: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent card click
+    setCurrentEntityView(entityId, 'new')
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -322,6 +327,7 @@ export default function JobsBusiness() {
                         variant="ghost"
                         size="sm"
                         className="w-full group-hover:bg-primary group-hover:text-primary-foreground"
+                        onClick={(e) => handleNewEntity(card.id, e)}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         New {card.title.slice(0, -1)}
