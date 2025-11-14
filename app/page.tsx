@@ -12,6 +12,9 @@ import Settings from '@/components/settings'
 import GetPaidNow from '@/components/get-paid-now'
 import GetReviewsNow from '@/components/get-reviews-now'
 import MyContractors from '@/components/my-contractors'
+import Estimates from '@/components/estimates'
+import WorkOrders from '@/components/work-orders'
+import Invoices from '@/components/invoices'
 import { useEffect } from 'react'
 
 export default function Home() {
@@ -51,6 +54,18 @@ export default function Home() {
 
   if (currentSection === 'my-contractors') {
     return <MyContractors />
+  }
+
+  if (currentSection === 'estimates') {
+    return <Estimates />
+  }
+
+  if (currentSection === 'work-orders') {
+    return <WorkOrders />
+  }
+
+  if (currentSection === 'invoices') {
+    return <Invoices />
   }
 
   return (

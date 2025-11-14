@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -10,38 +10,35 @@ import {
   ArrowLeft,
   FileText,
   Calendar,
-  DollarSign,
   Edit,
   Trash2,
-  Send,
   Check,
-  X,
-  Download,
-  Copy,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  CheckCircle2
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import LineItemEditor from './line-item-editor'
 import {
   LineItem,
-  EstimateDocument,
+  WorkOrderDocument,
   calculateDocumentTotals
 } from '@/lib/line-items'
 
-export default function Estimates() {
+export default function WorkOrders() {
   const {
-    estimates,
+    workOrders,
     entities,
-    addEstimate,
-    updateEstimate,
-    deleteEstimate,
-    convertEstimateToWorkOrder,
+    updateWorkOrder,
+    deleteWorkOrder,
+    addWorkOrder,
+    convertWorkOrderToInvoice,
     setCurrentSection,
     saveSettings
   } = useAppStore()
 
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'view'>('list')
-  const [selectedEstimate, setSelectedEstimate] = useState<EstimateDocument | null>(null)
+  const [selectedWO, setSelectedWO] = useState<WorkOrderDocument | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
 
   const [formData, setFormData] = useState<{
@@ -50,45 +47,37 @@ export default function Estimates() {
     jobName: string
     jobId: string
     date: number
-    expiryDate: number
-    status: 'Draft' | 'Sent' | 'Approved' | 'Rejected' | 'Expired'
+    scheduledDate?: number
+    status: 'Scheduled' | 'In Progress' | 'On Hold' | 'Completed' | 'Cancelled'
+    assignedTo: string
     taxRate: number
     notes: string
-    termsAndConditions: string
-    includeTerms: boolean
+    internalNotes: string
   }>({
     customerName: '',
     customerId: '',
     jobName: '',
     jobId: '',
     date: Date.now(),
-    expiryDate: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now
-    status: 'Draft',
+    scheduledDate: Date.now() + (24 * 60 * 60 * 1000), // Tomorrow
+    status: 'Scheduled',
+    assignedTo: '',
     taxRate: 6,
     notes: '',
-    termsAndConditions: 'This estimate is valid for 30 days from the date above. A 50% deposit is required to begin work. Final payment is due upon completion.',
-    includeTerms: true
+    internalNotes: ''
   })
 
   const [lineItems, setLineItems] = useState<LineItem[]>([])
 
-  // Get customers for dropdown
-  const customers = useMemo(() =>
-    entities.filter(e => e.entityType === 'customer'),
-    [entities]
-  )
+  // Get customers and jobs
+  const customers = useMemo(() => entities.filter(e => e.entityType === 'customer'), [entities])
+  const jobs = useMemo(() => entities.filter(e => e.entityType === 'job'), [entities])
 
-  // Get jobs for dropdown
-  const jobs = useMemo(() =>
-    entities.filter(e => e.entityType === 'job'),
-    [entities]
-  )
-
-  // Filter estimates
-  const filteredEstimates = useMemo(() => {
-    if (filterStatus === 'all') return estimates
-    return estimates.filter(e => e.status === filterStatus)
-  }, [estimates, filterStatus])
+  // Filter work orders
+  const filteredWorkOrders = useMemo(() => {
+    if (filterStatus === 'all') return workOrders
+    return workOrders.filter(wo => wo.status === filterStatus)
+  }, [workOrders, filterStatus])
 
   const handleCreate = () => {
     setFormData({
@@ -97,38 +86,38 @@ export default function Estimates() {
       jobName: '',
       jobId: '',
       date: Date.now(),
-      expiryDate: Date.now() + (30 * 24 * 60 * 60 * 1000),
-      status: 'Draft',
+      scheduledDate: Date.now() + (24 * 60 * 60 * 1000),
+      status: 'Scheduled',
+      assignedTo: '',
       taxRate: 6,
       notes: '',
-      termsAndConditions: 'This estimate is valid for 30 days from the date above. A 50% deposit is required to begin work. Final payment is due upon completion.',
-      includeTerms: true
+      internalNotes: ''
     })
     setLineItems([])
     setView('create')
   }
 
-  const handleEdit = (estimate: EstimateDocument) => {
+  const handleEdit = (wo: WorkOrderDocument) => {
     setFormData({
-      customerName: estimate.customerName,
-      customerId: estimate.customerId || '',
-      jobName: estimate.jobName || '',
-      jobId: estimate.jobId || '',
-      date: estimate.date,
-      expiryDate: estimate.expiryDate || Date.now() + (30 * 24 * 60 * 60 * 1000),
-      status: estimate.status,
-      taxRate: estimate.taxRate,
-      notes: estimate.notes || '',
-      termsAndConditions: estimate.termsAndConditions || '',
-      includeTerms: estimate.includeTerms
+      customerName: wo.customerName,
+      customerId: wo.customerId || '',
+      jobName: wo.jobName || '',
+      jobId: wo.jobId || '',
+      date: wo.date,
+      scheduledDate: wo.scheduledDate,
+      status: wo.status,
+      assignedTo: wo.assignedTo || '',
+      taxRate: wo.taxRate,
+      notes: wo.notes || '',
+      internalNotes: wo.internalNotes || ''
     })
-    setLineItems(estimate.lineItems)
-    setSelectedEstimate(estimate)
+    setLineItems(wo.lineItems)
+    setSelectedWO(wo)
     setView('edit')
   }
 
-  const handleView = (estimate: EstimateDocument) => {
-    setSelectedEstimate(estimate)
+  const handleView = (wo: WorkOrderDocument) => {
+    setSelectedWO(wo)
     setView('view')
   }
 
@@ -145,47 +134,48 @@ export default function Estimates() {
 
     const totals = calculateDocumentTotals(lineItems, formData.taxRate)
 
-    const estimateData: Omit<EstimateDocument, 'id' | 'number' | 'companyId' | 'createdAt' | 'updatedAt'> = {
+    const woData: Omit<WorkOrderDocument, 'id' | 'number' | 'companyId' | 'createdAt' | 'updatedAt'> = {
       customerName: formData.customerName,
       customerId: formData.customerId || undefined,
       jobName: formData.jobName || undefined,
       jobId: formData.jobId || undefined,
       date: formData.date,
-      expiryDate: formData.expiryDate,
+      scheduledDate: formData.scheduledDate,
+      completedDate: formData.status === 'Completed' ? Date.now() : undefined,
       status: formData.status,
+      assignedTo: formData.assignedTo || undefined,
       lineItems,
       subtotal: totals.subtotal,
       taxRate: formData.taxRate,
       taxAmount: totals.taxAmount,
       total: totals.total,
       notes: formData.notes,
-      termsAndConditions: formData.termsAndConditions,
-      includeTerms: formData.includeTerms
+      internalNotes: formData.internalNotes
     }
 
-    if (view === 'edit' && selectedEstimate) {
-      updateEstimate(selectedEstimate.id, estimateData)
+    if (view === 'edit' && selectedWO) {
+      updateWorkOrder(selectedWO.id, woData)
     } else {
-      addEstimate(estimateData)
+      addWorkOrder(woData)
     }
 
     saveSettings()
     setView('list')
-    setSelectedEstimate(null)
+    setSelectedWO(null)
   }
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this estimate?')) {
-      deleteEstimate(id)
+    if (confirm('Are you sure you want to delete this work order?')) {
+      deleteWorkOrder(id)
       saveSettings()
     }
   }
 
-  const handleConvertToWorkOrder = (estimateId: string) => {
-    const woId = convertEstimateToWorkOrder(estimateId)
-    updateEstimate(estimateId, { status: 'Approved' })
+  const handleConvertToInvoice = (woId: string) => {
+    const invId = convertWorkOrderToInvoice(woId)
+    updateWorkOrder(woId, { status: 'Completed' })
     saveSettings()
-    alert('Work Order created! You can find it in the Work Orders section.')
+    alert('Invoice created! You can find it in the Invoices section.')
   }
 
   const handleCustomerChange = (customerId: string) => {
@@ -212,12 +202,21 @@ export default function Estimates() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Draft': return 'secondary'
-      case 'Sent': return 'default'
-      case 'Approved': return 'outline'
-      case 'Rejected': return 'destructive'
-      case 'Expired': return 'secondary'
+      case 'Scheduled': return 'default'
+      case 'In Progress': return 'default'
+      case 'On Hold': return 'secondary'
+      case 'Completed': return 'outline'
+      case 'Cancelled': return 'destructive'
       default: return 'default'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Scheduled': return <Calendar className="w-4 h-4" />
+      case 'In Progress': return <Clock className="w-4 h-4" />
+      case 'Completed': return <CheckCircle2 className="w-4 h-4" />
+      default: return null
     }
   }
 
@@ -236,15 +235,15 @@ export default function Estimates() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Estimates</h1>
+              <h1 className="text-3xl font-bold">Work Orders</h1>
               <p className="text-muted-foreground mt-1">
-                Create and manage customer estimates
+                Schedule and track work
               </p>
             </div>
           </div>
           <Button onClick={handleCreate}>
             <Plus className="w-4 h-4 mr-2" />
-            New Estimate
+            New Work Order
           </Button>
         </div>
 
@@ -257,64 +256,71 @@ export default function Estimates() {
                 size="sm"
                 onClick={() => setFilterStatus('all')}
               >
-                All ({estimates.length})
+                All ({workOrders.length})
               </Button>
               <Button
-                variant={filterStatus === 'Draft' ? 'default' : 'outline'}
+                variant={filterStatus === 'Scheduled' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilterStatus('Draft')}
+                onClick={() => setFilterStatus('Scheduled')}
               >
-                Draft ({estimates.filter(e => e.status === 'Draft').length})
+                Scheduled ({workOrders.filter(wo => wo.status === 'Scheduled').length})
               </Button>
               <Button
-                variant={filterStatus === 'Sent' ? 'default' : 'outline'}
+                variant={filterStatus === 'In Progress' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilterStatus('Sent')}
+                onClick={() => setFilterStatus('In Progress')}
               >
-                Sent ({estimates.filter(e => e.status === 'Sent').length})
+                In Progress ({workOrders.filter(wo => wo.status === 'In Progress').length})
               </Button>
               <Button
-                variant={filterStatus === 'Approved' ? 'default' : 'outline'}
+                variant={filterStatus === 'Completed' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setFilterStatus('Approved')}
+                onClick={() => setFilterStatus('Completed')}
               >
-                Approved ({estimates.filter(e => e.status === 'Approved').length})
+                Completed ({workOrders.filter(wo => wo.status === 'Completed').length})
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Estimates List */}
+        {/* Work Orders List */}
         <div className="space-y-3">
-          {filteredEstimates.length === 0 ? (
+          {filteredWorkOrders.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No estimates found</p>
+                <p className="text-muted-foreground">No work orders found</p>
                 <Button className="mt-4" onClick={handleCreate}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Create First Estimate
+                  Create First Work Order
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            filteredEstimates.sort((a, b) => b.date - a.date).map(estimate => (
-              <Card key={estimate.id} className="hover:shadow-md transition-shadow">
+            filteredWorkOrders.sort((a, b) => (b.scheduledDate || b.date) - (a.scheduledDate || a.date)).map(wo => (
+              <Card key={wo.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold">{estimate.number}</h3>
-                        <Badge variant={getStatusColor(estimate.status)}>
-                          {estimate.status}
+                        <h3 className="font-semibold">{wo.number}</h3>
+                        <Badge variant={getStatusColor(wo.status)} className="flex items-center gap-1">
+                          {getStatusIcon(wo.status)}
+                          {wo.status}
                         </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
-                        <p className="font-medium text-foreground">{estimate.customerName}</p>
-                        {estimate.jobName && <p>Job: {estimate.jobName}</p>}
-                        <p>{new Date(estimate.date).toLocaleDateString()}</p>
+                        <p className="font-medium text-foreground">{wo.customerName}</p>
+                        {wo.jobName && <p>Job: {wo.jobName}</p>}
+                        {wo.scheduledDate && (
+                          <p className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            Scheduled: {new Date(wo.scheduledDate).toLocaleDateString()}
+                          </p>
+                        )}
+                        {wo.assignedTo && <p>Assigned: {wo.assignedTo}</p>}
                         <p className="text-lg font-semibold text-foreground">
-                          ${estimate.total.toFixed(2)}
+                          ${wo.total.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -322,32 +328,32 @@ export default function Estimates() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleView(estimate)}
+                        onClick={() => handleView(wo)}
                       >
                         View
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleEdit(estimate)}
+                        onClick={() => handleEdit(wo)}
                       >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>
-                      {estimate.status === 'Approved' && (
+                      {wo.status === 'Completed' && (
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => handleConvertToWorkOrder(estimate.id)}
+                          onClick={() => handleConvertToInvoice(wo.id)}
                         >
                           <ArrowRight className="w-4 h-4 mr-2" />
-                          Create Work Order
+                          Create Invoice
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(estimate.id)}
+                        onClick={() => handleDelete(wo.id)}
                       >
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </Button>
@@ -376,17 +382,17 @@ export default function Estimates() {
               size="icon"
               onClick={() => {
                 setView('list')
-                setSelectedEstimate(null)
+                setSelectedWO(null)
               }}
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
               <h1 className="text-3xl font-bold">
-                {view === 'edit' ? 'Edit' : 'New'} Estimate
+                {view === 'edit' ? 'Edit' : 'New'} Work Order
               </h1>
               <p className="text-muted-foreground mt-1">
-                {view === 'edit' && selectedEstimate ? selectedEstimate.number : 'Number will be auto-generated'}
+                {view === 'edit' && selectedWO ? selectedWO.number : 'Number will be auto-generated'}
               </p>
             </div>
           </div>
@@ -396,7 +402,7 @@ export default function Estimates() {
             </Button>
             <Button onClick={handleSave}>
               <Check className="w-4 h-4 mr-2" />
-              Save Estimate
+              Save Work Order
             </Button>
           </div>
         </div>
@@ -407,15 +413,15 @@ export default function Estimates() {
             {/* Basic Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Estimate Information</CardTitle>
+                <CardTitle>Work Order Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  {view === 'edit' && selectedEstimate && (
+                  {view === 'edit' && selectedWO && (
                     <div>
-                      <label className="text-sm font-medium mb-1 block">Estimate Number</label>
+                      <label className="text-sm font-medium mb-1 block">WO Number</label>
                       <Input
-                        value={selectedEstimate.number}
+                        value={selectedWO.number}
                         disabled
                         className="bg-muted"
                       />
@@ -428,11 +434,11 @@ export default function Estimates() {
                       onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                       className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
                     >
-                      <option value="Draft">Draft</option>
-                      <option value="Sent">Sent</option>
-                      <option value="Approved">Approved</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="Expired">Expired</option>
+                      <option value="Scheduled">Scheduled</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="On Hold">On Hold</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Cancelled">Cancelled</option>
                     </select>
                   </div>
                 </div>
@@ -470,9 +476,9 @@ export default function Estimates() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Date</label>
+                    <label className="text-sm font-medium mb-1 block">Created Date</label>
                     <Input
                       type="date"
                       value={new Date(formData.date).toISOString().split('T')[0]}
@@ -480,11 +486,19 @@ export default function Estimates() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Expiry Date</label>
+                    <label className="text-sm font-medium mb-1 block">Scheduled Date</label>
                     <Input
                       type="date"
-                      value={new Date(formData.expiryDate).toISOString().split('T')[0]}
-                      onChange={(e) => setFormData({ ...formData, expiryDate: new Date(e.target.value).getTime() })}
+                      value={formData.scheduledDate ? new Date(formData.scheduledDate).toISOString().split('T')[0] : ''}
+                      onChange={(e) => setFormData({ ...formData, scheduledDate: new Date(e.target.value).getTime() })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Assigned To</label>
+                    <Input
+                      placeholder="Tech name"
+                      value={formData.assignedTo}
+                      onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
                     />
                   </div>
                 </div>
@@ -508,40 +522,29 @@ export default function Estimates() {
               taxRate={formData.taxRate}
             />
 
-            {/* Notes & Terms */}
+            {/* Notes */}
             <Card>
               <CardHeader>
-                <CardTitle>Notes & Terms</CardTitle>
+                <CardTitle>Notes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Notes (Internal)</label>
+                  <label className="text-sm font-medium mb-1 block">Customer Notes</label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-background text-sm"
-                    placeholder="Internal notes..."
+                    placeholder="Notes for customer..."
                   />
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-sm font-medium">Terms & Conditions</label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.includeTerms}
-                        onChange={(e) => setFormData({ ...formData, includeTerms: e.target.checked })}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Include on PDF</span>
-                    </label>
-                  </div>
+                  <label className="text-sm font-medium mb-1 block">Internal Notes</label>
                   <textarea
-                    value={formData.termsAndConditions}
-                    onChange={(e) => setFormData({ ...formData, termsAndConditions: e.target.value })}
-                    className="w-full min-h-[120px] px-3 py-2 rounded-md border border-input bg-background text-sm"
-                    placeholder="Terms and conditions..."
+                    value={formData.internalNotes}
+                    onChange={(e) => setFormData({ ...formData, internalNotes: e.target.value })}
+                    className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-background text-sm"
+                    placeholder="Internal notes (not visible to customer)..."
                   />
                 </div>
               </CardContent>
@@ -571,26 +574,6 @@ export default function Estimates() {
                   <span>Total:</span>
                   <span>${totals.total.toFixed(2)}</span>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export PDF
-                </Button>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Send className="w-4 h-4 mr-2" />
-                  Email Customer
-                </Button>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Copy className="w-4 h-4 mr-2" />
-                  Duplicate
-                </Button>
               </CardContent>
             </Card>
           </div>

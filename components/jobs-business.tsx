@@ -150,11 +150,39 @@ export default function JobsBusiness() {
   ]
 
   const handleEntityClick = (entityId: string) => {
+    // Redirect to specialized components for estimates, work orders, and invoices
+    if (entityId === 'estimate') {
+      setCurrentSection('estimates')
+      return
+    }
+    if (entityId === 'workOrder') {
+      setCurrentSection('work-orders')
+      return
+    }
+    if (entityId === 'invoice') {
+      setCurrentSection('invoices')
+      return
+    }
+    // Use generic entity system for other types
     setCurrentEntityView(entityId, null)
   }
 
   const handleNewEntity = (entityId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent card click
+    // Redirect to specialized components for estimates, work orders, and invoices
+    if (entityId === 'estimate') {
+      setCurrentSection('estimates')
+      return
+    }
+    if (entityId === 'workOrder') {
+      setCurrentSection('work-orders')
+      return
+    }
+    if (entityId === 'invoice') {
+      setCurrentSection('invoices')
+      return
+    }
+    // Use generic entity system for other types
     setCurrentEntityView(entityId, 'new')
   }
 
