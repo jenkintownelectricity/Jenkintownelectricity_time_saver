@@ -28,6 +28,20 @@ export interface NECCode {
   isBookmarked: boolean
 }
 
+export interface OnCallStatus {
+  isOnCall: boolean
+  personName: string | null
+  startedAt: number | null
+}
+
+export interface OnCallVolunteer {
+  id: string
+  name: string
+  phone: string
+  type: 'employee' | '1099'
+  createdAt: number
+}
+
 interface AppState {
   // Navigation
   currentSection: AppSection
@@ -50,7 +64,15 @@ interface AppState {
   bookmarkedCodes: NECCode[]
   addBookmark: (code: NECCode) => void
   removeBookmark: (codeNumber: string) => void
-  
+
+  // On-Call Status
+  onCallStatus: OnCallStatus
+  onCallVolunteers: OnCallVolunteer[]
+  setOnCall: (personName: string) => void
+  clearOnCall: () => void
+  addOnCallVolunteer: (volunteer: Omit<OnCallVolunteer, 'id' | 'createdAt'>) => void
+  removeOnCallVolunteer: (id: string) => void
+
   // Entity Management System
   entityTypes: { [key: string]: EntityType }
   entities: EntityInstance[]
@@ -118,6 +140,7 @@ interface AppState {
   }
   // Owner/Admin Settings
   ownerSettings: {
+    onCallFeatureEnabled: boolean
     provideDefaultKeys: boolean // If true, use owner's keys as fallback
     defaultVapiKey: string
     defaultVapiAssistantId: string
@@ -206,6 +229,51 @@ export const useAppStore = create<AppState>((set, get) => ({
   removeBookmark: (codeNumber) => set((state) => ({
     bookmarkedCodes: state.bookmarkedCodes.filter(code => code.code !== codeNumber)
   })),
+
+  // On-Call Status
+  onCallStatus: {
+    isOnCall: false,
+    personName: null,
+    startedAt: null
+  },
+  onCallVolunteers: [],
+  setOnCall: (personName) => {
+    set({
+      onCallStatus: {
+        isOnCall: true,
+        personName,
+        startedAt: Date.now()
+      }
+    })
+    get().saveSettings()
+  },
+  clearOnCall: () => {
+    set({
+      onCallStatus: {
+        isOnCall: false,
+        personName: null,
+        startedAt: null
+      }
+    })
+    get().saveSettings()
+  },
+  addOnCallVolunteer: (volunteer) => {
+    const newVolunteer: OnCallVolunteer = {
+      ...volunteer,
+      id: `volunteer_${Date.now()}`,
+      createdAt: Date.now()
+    }
+    set((state) => ({
+      onCallVolunteers: [...state.onCallVolunteers, newVolunteer]
+    }))
+    get().saveSettings()
+  },
+  removeOnCallVolunteer: (id) => {
+    set((state) => ({
+      onCallVolunteers: state.onCallVolunteers.filter(v => v.id !== id)
+    }))
+    get().saveSettings()
+  },
 
   // Entity Management System
   entityTypes: DEFAULT_ENTITIES,
@@ -778,6 +846,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   // Owner/Admin Settings - these are YOUR credentials
   ownerSettings: {
+    onCallFeatureEnabled: false, // Toggle on-call emergency system
     provideDefaultKeys: true, // Toggle this to enable/disable fallback to your keys
     defaultVapiKey: '58f63a6f-6694-4fe3-8f72-fea362908803',
     defaultVapiAssistantId: '00788639-dd74-48ec-aa8b-a6572d70e45b',
@@ -842,7 +911,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId } = parsed
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, onCallVolunteers } = parsed
           set({
             apiKeys,
             integrations,
@@ -855,7 +924,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...(workOrders && { workOrders }),
             ...(invoices && { invoices }),
             ...(companyProfiles && { companyProfiles }),
-            ...(currentCompanyId !== undefined && { currentCompanyId })
+            ...(currentCompanyId !== undefined && { currentCompanyId }),
+            ...(onCallStatus && { onCallStatus }),
+            ...(onCallVolunteers && { onCallVolunteers })
           })
         } catch (e) {
           console.error('Failed to load settings:', e)
@@ -865,8 +936,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, onCallVolunteers } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, onCallVolunteers }))
     }
   },
 }))

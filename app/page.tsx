@@ -16,10 +16,11 @@ import MyContractors from '@/components/my-contractors'
 import Estimates from '@/components/estimates'
 import WorkOrders from '@/components/work-orders'
 import Invoices from '@/components/invoices'
+import OnCallIndicator from '@/components/on-call-indicator'
 import { useEffect } from 'react'
 
 export default function Home() {
-  const { currentSection, setCurrentSection, loadSettings } = useAppStore()
+  const { currentSection, setCurrentSection, loadSettings, ownerSettings } = useAppStore()
 
   useEffect(() => {
     loadSettings()
@@ -115,6 +116,13 @@ export default function Home() {
             Talk to AI Assistant
           </Button>
         </div>
+
+        {/* On-Call Status Indicator - Only if enabled */}
+        {ownerSettings.onCallFeatureEnabled && (
+          <div className="mb-12">
+            <OnCallIndicator />
+          </div>
+        )}
 
         {/* Get Paid & Get Reviews - Big Buttons */}
         <div className="mb-12 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">

@@ -396,6 +396,23 @@ export default function Settings() {
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
             <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">On-Call Emergency System</h3>
+              <p className="text-sm text-muted-foreground">
+                Enable the on-call status indicator and emergency alert system on your home page.
+                Perfect for businesses that need 24/7 emergency coverage.
+              </p>
+            </div>
+            <Button
+              variant={ownerSettings.onCallFeatureEnabled ? "default" : "outline"}
+              onClick={() => setOwnerSetting('onCallFeatureEnabled', !ownerSettings.onCallFeatureEnabled)}
+              className="ml-4"
+            >
+              {ownerSettings.onCallFeatureEnabled ? "ON" : "OFF"}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
+            <div className="flex-1">
               <h3 className="font-semibold text-foreground mb-1">Provide Default API Keys</h3>
               <p className="text-sm text-muted-foreground">
                 When enabled, users without their own API keys will use your default keys (you pay for API usage).
