@@ -55,7 +55,30 @@ export default function QuickBooksConnector() {
       if (data.authUrl) {
         window.location.href = data.authUrl
       } else if (data.error) {
-        alert(data.error)
+        // Show detailed setup instructions
+        const setupMessage = `${data.error}
+
+📋 Setup Required:
+
+1. Create QuickBooks App:
+   • Visit https://developer.intuit.com
+   • Create a new app for QuickBooks Online
+   • Copy your Client ID and Client Secret
+
+2. Add to Vercel (Production):
+   • Go to Vercel Dashboard → Project Settings → Environment Variables
+   • Add: QUICKBOOKS_CLIENT_ID = (your client id)
+   • Add: QUICKBOOKS_CLIENT_SECRET = (your client secret)
+   • Add: NEXT_PUBLIC_APP_URL = (your vercel url)
+   • REDEPLOY your app after adding variables
+
+3. For Local Development:
+   • Add the same variables to .env.local file
+   • Restart your dev server
+
+Need help? Check the detailed instructions below.`
+
+        alert(setupMessage)
       }
     } catch (error) {
       console.error('Error connecting to QuickBooks:', error)
@@ -132,14 +155,48 @@ export default function QuickBooksConnector() {
           </ul>
         </div>
 
-        <div className="text-xs text-gray-500 border-t pt-3">
-          <p><strong>Setup Instructions:</strong></p>
-          <ol className="list-decimal list-inside space-y-1 ml-2 mt-1">
-            <li>Add your QuickBooks credentials to .env.local</li>
-            <li>Click "Connect QuickBooks" above</li>
-            <li>Authorize access to your QuickBooks company</li>
-            <li>Use the "Sync QB" button on estimates and invoices</li>
-          </ol>
+        <div className="text-xs text-gray-500 border-t pt-3 space-y-3">
+          <div>
+            <p className="font-semibold mb-2">📋 Setup Instructions:</p>
+            <ol className="list-decimal list-inside space-y-2 ml-2">
+              <li>
+                <strong>Create QuickBooks App</strong>
+                <ul className="list-disc list-inside ml-4 mt-1 text-gray-600">
+                  <li>Go to <a href="https://developer.intuit.com" target="_blank" rel="noopener" className="text-blue-600 hover:underline">developer.intuit.com</a></li>
+                  <li>Sign in and create a new app</li>
+                  <li>Choose "QuickBooks Online" as the platform</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Configure OAuth Settings</strong>
+                <ul className="list-disc list-inside ml-4 mt-1 text-gray-600">
+                  <li>Add redirect URI: <code className="bg-gray-100 px-1 rounded">https://your-app.vercel.app/api/quickbooks/callback</code></li>
+                  <li>Copy your Client ID and Client Secret</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Add Environment Variables (Vercel)</strong>
+                <ul className="list-disc list-inside ml-4 mt-1 text-gray-600">
+                  <li>Go to Vercel Dashboard → Your Project → Settings → Environment Variables</li>
+                  <li>Add: <code className="bg-gray-100 px-1 rounded">QUICKBOOKS_CLIENT_ID</code></li>
+                  <li>Add: <code className="bg-gray-100 px-1 rounded">QUICKBOOKS_CLIENT_SECRET</code></li>
+                  <li>Add: <code className="bg-gray-100 px-1 rounded">NEXT_PUBLIC_APP_URL</code> = your Vercel URL</li>
+                  <li>Redeploy your app after adding variables</li>
+                </ul>
+              </li>
+              <li>Click "Connect QuickBooks" above to authorize</li>
+              <li>Use "Sync QB" buttons on estimates and invoices</li>
+            </ol>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
+            <p className="font-semibold text-yellow-800">⚠️ Important:</p>
+            <ul className="list-disc list-inside ml-2 text-yellow-700 mt-1">
+              <li>Environment variables must be set in Vercel Dashboard</li>
+              <li>Redeploy after adding variables for them to take effect</li>
+              <li>For local development, add to <code className="bg-yellow-100 px-1 rounded">.env.local</code></li>
+            </ul>
+          </div>
         </div>
       </CardContent>
     </Card>
