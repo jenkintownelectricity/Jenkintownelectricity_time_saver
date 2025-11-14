@@ -730,18 +730,62 @@ export default function Estimates() {
                 <CardTitle className="text-sm">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export PDF
-                </Button>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Send className="w-4 h-4 mr-2" />
-                  Email Customer
-                </Button>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Copy className="w-4 h-4 mr-2" />
-                  Duplicate
-                </Button>
+                {view === 'edit' && selectedEstimate && (
+                  <>
+                    <PDFDownloadLink
+                      document={
+                        <EstimatePDF
+                          estimate={selectedEstimate}
+                          company={
+                            companyProfiles.find(p => p.id === (selectedEstimate.companyId || currentCompanyId)) ||
+                            companyProfiles.find(p => p.isDefault) ||
+                            companyProfiles[0]
+                          }
+                        />
+                      }
+                      fileName={`${selectedEstimate.number}-estimate.pdf`}
+                    >
+                      {({ loading }) => (
+                        <Button variant="outline" size="sm" className="w-full" disabled={loading}>
+                          <Download className="w-4 h-4 mr-2" />
+                          {loading ? 'Generating...' : 'Export PDF'}
+                        </Button>
+                      )}
+                    </PDFDownloadLink>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleEmail(selectedEstimate)}
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Email Customer
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleDuplicate(selectedEstimate.id)}
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Duplicate
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleQuickBooksSync(selectedEstimate)}
+                    >
+                      <Building2 className="w-4 h-4 mr-2" />
+                      Sync to QuickBooks
+                    </Button>
+                  </>
+                )}
+                {view === 'create' && (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Save the estimate first to use quick actions
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
