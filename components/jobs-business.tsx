@@ -20,7 +20,8 @@ import {
   Plus,
   AlertCircle,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Building2
 } from 'lucide-react'
 
 export default function JobsBusiness() {
@@ -141,6 +142,16 @@ export default function JobsBusiness() {
       enabled: getEntityType('subcontractor')?.enabled
     },
     {
+      id: 'my-contractors',
+      title: 'My Contractors',
+      description: 'Work I do for other GCs',
+      icon: Building2,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-500/10',
+      count: 0, // This is managed separately
+      enabled: true
+    },
+    {
       id: 'official',
       title: 'Officials & Inspectors',
       description: 'Inspectors, permits, officials',
@@ -166,6 +177,10 @@ export default function JobsBusiness() {
       setCurrentSection('invoices')
       return
     }
+    if (entityId === 'my-contractors') {
+      setCurrentSection('my-contractors')
+      return
+    }
     // Use generic entity system for other types
     setCurrentEntityView(entityId, null)
   }
@@ -183,6 +198,10 @@ export default function JobsBusiness() {
     }
     if (entityId === 'invoice') {
       setCurrentSection('invoices')
+      return
+    }
+    if (entityId === 'my-contractors') {
+      setCurrentSection('my-contractors')
       return
     }
     // Use generic entity system for other types
