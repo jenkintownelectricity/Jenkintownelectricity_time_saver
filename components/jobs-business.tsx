@@ -5,6 +5,7 @@ import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import EntityList from '@/components/entity-list'
 import EntityForm from '@/components/entity-form'
 import TeamManagement from '@/components/team-management'
@@ -22,7 +23,10 @@ import {
   AlertCircle,
   Clock,
   TrendingUp,
-  Building2
+  Building2,
+  Zap,
+  X,
+  Check
 } from 'lucide-react'
 
 export default function JobsBusiness() {
@@ -38,11 +42,16 @@ export default function JobsBusiness() {
     invoices,
     workOrders,
     ownerSettings,
-    teamMembers
+    teamMembers,
+    onCallStatus,
+    setOnCall,
+    clearOnCall
   } = useAppStore()
 
   // Load My Contractors count from localStorage
   const [contractorsCount, setContractorsCount] = useState(0)
+  const [showOnCallModal, setShowOnCallModal] = useState(false)
+  const [onCallPersonName, setOnCallPersonName] = useState('')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -53,6 +62,28 @@ export default function JobsBusiness() {
       }
     }
   }, [])
+
+  // On-Call handlers
+  const onCallAvailableMembers = teamMembers.filter(m => m.onCallAvailable)
+
+  const handleSetOnCall = () => {
+    if (onCallPersonName.trim()) {
+      setOnCall(onCallPersonName.trim())
+      setOnCallPersonName('')
+      setShowOnCallModal(false)
+    }
+  }
+
+  const handleSelectOnCallMember = (name: string) => {
+    setOnCall(name)
+    setShowOnCallModal(false)
+  }
+
+  const handleClearOnCall = () => {
+    if (confirm(`Clear on-call status for ${onCallStatus.personName}?`)) {
+      clearOnCall()
+    }
+  }
 
   // If viewing team management
   if (currentEntityView === 'team') {
@@ -329,58 +360,134 @@ export default function JobsBusiness() {
             </Card>
           </div>
 
-          {/* Emergency Alerts Section */}
-          <Card className="bg-orange-500/5 border-orange-500/20">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <AlertCircle className="w-6 h-6 text-orange-500" />
-                <div className="flex-1">
-                  <CardTitle>Emergency Alert System</CardTitle>
-                  <CardDescription>Configure on-call schedules and emergency routing</CardDescription>
-                </div>
-                <Button size="sm" variant="outline">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Configure On-Call
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-3 bg-background rounded-lg border">
-                  <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <span className="text-sm font-bold text-green-600">You</span>
+          {/* Emergency Alerts Section - Synced with Home */}
+          {ownerSettings.onCallFeatureEnabled && (
+            <Card className={`transition-all duration-300 ${
+              onCallStatus.isOnCall
+                ? 'bg-green-500/5 border-green-500/20'
+                : 'bg-red-500/5 border-red-500/20'
+            }`}>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center transition-all
+                    ${onCallStatus.isOnCall
+                      ? 'bg-green-500 animate-pulse'
+                      : 'bg-red-500 animate-pulse'
+                    }
+                  `}>
+                    {onCallStatus.isOnCall ? (
+                      <Zap className="w-5 h-5 text-white" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-white" />
+                    )}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Primary On-Call</p>
-                    <p className="text-xs text-muted-foreground">Available 24/7</p>
+                    <CardTitle className={onCallStatus.isOnCall ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}>
+                      {onCallStatus.isOnCall ? 'ON CALL ACTIVE' : 'NO ONE ON CALL'}
+                    </CardTitle>
+                    <CardDescription>
+                      {onCallStatus.isOnCall
+                        ? `${onCallStatus.personName} is on call since ${new Date(onCallStatus.startedAt!).toLocaleTimeString()}`
+                        : 'Emergency system inactive - assign someone to on-call'
+                      }
+                    </CardDescription>
                   </div>
-                  <Badge variant="default" className="bg-green-500">Active</Badge>
+                  {onCallStatus.isOnCall ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleClearOnCall}
+                      className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      End On-Call
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowOnCallModal(true)}
+                      className="border-green-500 text-green-600 hover:bg-green-500 hover:text-white"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Assign On-Call
+                    </Button>
+                  )}
                 </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Primary On-Call Status */}
+                  <div className={`flex items-center gap-3 p-3 bg-background rounded-lg border ${
+                    onCallStatus.isOnCall ? 'border-green-500/30' : 'border-red-500/30'
+                  }`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      onCallStatus.isOnCall ? 'bg-green-500/10' : 'bg-red-500/10'
+                    }`}>
+                      {onCallStatus.isOnCall ? (
+                        <Zap className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <UserCheck className="w-5 h-5 text-red-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {onCallStatus.isOnCall ? onCallStatus.personName : 'Not Assigned'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {onCallStatus.isOnCall ? 'Primary On-Call' : 'No one on-call'}
+                      </p>
+                    </div>
+                    <Badge variant="default" className={
+                      onCallStatus.isOnCall ? 'bg-green-500' : 'bg-red-500'
+                    }>
+                      {onCallStatus.isOnCall ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
 
-                <div className="flex items-center gap-3 p-3 bg-background rounded-lg border">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
-                    <UserCheck className="w-5 h-5 text-blue-500" />
+                  {/* Available Team Members */}
+                  <div className="flex items-center gap-3 p-3 bg-background rounded-lg border">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Available Team</p>
+                      <p className="text-xs text-muted-foreground">
+                        {onCallAvailableMembers.length} members ready
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCurrentEntityView('team', null)}
+                    >
+                      Manage
+                    </Button>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Backup Tech</p>
-                    <p className="text-xs text-muted-foreground">Not assigned</p>
-                  </div>
-                  <Button size="sm" variant="outline">Assign</Button>
-                </div>
 
-                <div className="flex items-center gap-3 p-3 bg-background rounded-lg border">
-                  <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-orange-500" />
+                  {/* Status Since */}
+                  <div className="flex items-center gap-3 p-3 bg-background rounded-lg border">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                      <Clock className="w-5 h-5 text-purple-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {onCallStatus.isOnCall ? 'On-Call Duration' : 'Last Active'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {onCallStatus.isOnCall && onCallStatus.startedAt
+                          ? `${Math.floor((Date.now() - onCallStatus.startedAt) / 60000)} min ago`
+                          : 'Not tracked'
+                        }
+                      </p>
+                    </div>
+                    <Badge variant="outline">Live</Badge>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Response Time</p>
-                    <p className="text-xs text-muted-foreground">Avg: 8 min</p>
-                  </div>
-                  <Badge variant="outline">Good</Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Entity Grid */}
           <div>
@@ -458,6 +565,98 @@ export default function JobsBusiness() {
           )}
         </div>
       </main>
+
+      {/* On-Call Assignment Modal */}
+      {showOnCallModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-yellow-500" />
+                Assign On-Call Person
+              </CardTitle>
+              <CardDescription>Choose from available team members or enter a name</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Available Team Members List */}
+              {onCallAvailableMembers.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Available Team Members</label>
+                  <div className="grid gap-2">
+                    {onCallAvailableMembers.map(member => (
+                      <Button
+                        key={member.id}
+                        variant="outline"
+                        className="w-full justify-start text-left h-auto py-3"
+                        onClick={() => handleSelectOnCallMember(member.name)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{member.name}</span>
+                            {member.type === '1099' ? (
+                              <Badge variant="outline" className="text-xs bg-purple-500 text-white">1099</Badge>
+                            ) : member.type === 'employee' ? (
+                              <Badge variant="outline" className="text-xs bg-blue-500 text-white">Employee</Badge>
+                            ) : member.type === 'subcontractor' ? (
+                              <Badge variant="outline" className="text-xs bg-orange-500 text-white">Sub</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs bg-green-500 text-white">Work For</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            {member.phone}
+                          </div>
+                        </div>
+                        <Check className="w-4 h-4 text-green-500" />
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {onCallAvailableMembers.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm mb-2">No team members available for on-call</p>
+                  <p className="text-xs">Go to Team Management to add members and mark them as on-call available</p>
+                </div>
+              )}
+
+              {/* Custom Name Entry */}
+              <div className="pt-4 border-t">
+                <label className="text-sm font-medium mb-2 block">
+                  Or enter a name manually
+                </label>
+                <Input
+                  placeholder="Enter name..."
+                  value={onCallPersonName}
+                  onChange={(e) => setOnCallPersonName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSetOnCall()}
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowOnCallModal(false)
+                    setOnCallPersonName('')
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSetOnCall}
+                  disabled={!onCallPersonName.trim()}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Set On-Call
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
