@@ -5,6 +5,8 @@ import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import EntityList from '@/components/entity-list'
+import EntityForm from '@/components/entity-form'
 import {
   ArrowLeft,
   Briefcase,
@@ -26,10 +28,20 @@ export default function JobsBusiness() {
     entityTypes,
     entities,
     getEntitiesByType,
+    currentEntityView,
+    currentEntityId,
     setCurrentEntityView
   } = useAppStore()
 
-  const [activeView, setActiveView] = useState<'dashboard' | 'list'>('dashboard')
+  // If viewing/editing an entity
+  if (currentEntityView && currentEntityId) {
+    return <EntityForm entityTypeId={currentEntityView} entityId={currentEntityId} />
+  }
+
+  // If viewing an entity list
+  if (currentEntityView) {
+    return <EntityList entityTypeId={currentEntityView} />
+  }
 
   // Get counts for each entity type
   const getCounts = (entityTypeId: string) => {
@@ -127,8 +139,7 @@ export default function JobsBusiness() {
   ]
 
   const handleEntityClick = (entityId: string) => {
-    setCurrentEntityView(entityId)
-    // TODO: Navigate to entity list view
+    setCurrentEntityView(entityId, null)
   }
 
   return (
