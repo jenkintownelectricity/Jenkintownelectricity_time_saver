@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { EntityType, EntityInstance, DEFAULT_ENTITIES, ContactAddress, LinkedContact } from './entities'
 import { TaxDocument, TaxPackage, getQuarterFromDate } from './tax-documents'
 import { EstimateDocument, WorkOrderDocument, InvoiceDocument, calculateDocumentTotals } from './line-items'
+import { CompanyProfile, createDefaultCompanyProfile } from './company-profiles'
 
 export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices'
 
@@ -92,6 +93,17 @@ interface AppState {
   getInvoice: (id: string) => InvoiceDocument | undefined
   convertEstimateToWorkOrder: (estimateId: string) => string
   convertWorkOrderToInvoice: (workOrderId: string) => string
+
+  // Company Profiles (for multiple companies/DBAs)
+  companyProfiles: CompanyProfile[]
+  currentCompanyId: string | null
+  addCompanyProfile: (profile: Omit<CompanyProfile, 'id' | 'createdAt' | 'updatedAt'>) => string
+  updateCompanyProfile: (id: string, updates: Partial<CompanyProfile>) => void
+  deleteCompanyProfile: (id: string) => void
+  setDefaultCompany: (id: string) => void
+  setCurrentCompany: (id: string) => void
+  getCurrentCompany: () => CompanyProfile | null
+  getDefaultCompany: () => CompanyProfile | null
 
   // API Keys & Settings
   apiKeys: {
@@ -468,6 +480,94 @@ export const useAppStore = create<AppState>((set, get) => ({
     return get().addInvoice(invoice)
   },
 
+  // Company Profiles
+  companyProfiles: [],
+  currentCompanyId: null,
+
+  addCompanyProfile: (profile) => {
+    const now = Date.now()
+    const newProfile: CompanyProfile = {
+      ...profile,
+      id: `company_${now}`,
+      createdAt: now,
+      updatedAt: now
+    }
+
+    set((state) => {
+      // If this is the first company or marked as default, unset other defaults
+      let profiles = state.companyProfiles
+      if (newProfile.isDefault || profiles.length === 0) {
+        newProfile.isDefault = true
+        profiles = profiles.map(p => ({ ...p, isDefault: false }))
+      }
+
+      const updatedProfiles = [...profiles, newProfile]
+
+      // Set as current if it's the first or default
+      return {
+        companyProfiles: updatedProfiles,
+        currentCompanyId: profiles.length === 0 || newProfile.isDefault ? newProfile.id : state.currentCompanyId
+      }
+    })
+
+    return newProfile.id
+  },
+
+  updateCompanyProfile: (id, updates) => set((state) => {
+    let profiles = state.companyProfiles.map(profile =>
+      profile.id === id
+        ? { ...profile, ...updates, updatedAt: Date.now() }
+        : profile
+    )
+
+    // If setting as default, unset others
+    if (updates.isDefault) {
+      profiles = profiles.map(p =>
+        p.id === id ? p : { ...p, isDefault: false }
+      )
+    }
+
+    return { companyProfiles: profiles }
+  }),
+
+  deleteCompanyProfile: (id) => set((state) => {
+    const filtered = state.companyProfiles.filter(p => p.id !== id)
+
+    // If deleted the current company, switch to default
+    let newCurrentId = state.currentCompanyId
+    if (state.currentCompanyId === id) {
+      const defaultCompany = filtered.find(p => p.isDefault)
+      newCurrentId = defaultCompany?.id || (filtered.length > 0 ? filtered[0].id : null)
+    }
+
+    return {
+      companyProfiles: filtered,
+      currentCompanyId: newCurrentId
+    }
+  }),
+
+  setDefaultCompany: (id) => set((state) => ({
+    companyProfiles: state.companyProfiles.map(p => ({
+      ...p,
+      isDefault: p.id === id
+    }))
+  })),
+
+  setCurrentCompany: (id) => set({
+    currentCompanyId: id
+  }),
+
+  getCurrentCompany: () => {
+    const state = get()
+    if (!state.currentCompanyId) return null
+    return state.companyProfiles.find(p => p.id === state.currentCompanyId) || null
+  },
+
+  getDefaultCompany: () => {
+    const state = get()
+    return state.companyProfiles.find(p => p.isDefault) || state.companyProfiles[0] || null
+  },
+
   // API Keys & Settings
   apiKeys: {
     vapi: null,
@@ -542,7 +642,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices } = parsed
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId } = parsed
           set({
             apiKeys,
             integrations,
@@ -553,7 +653,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...(taxPackages && { taxPackages }),
             ...(estimates && { estimates }),
             ...(workOrders && { workOrders }),
-            ...(invoices && { invoices })
+            ...(invoices && { invoices }),
+            ...(companyProfiles && { companyProfiles }),
+            ...(currentCompanyId !== undefined && { currentCompanyId })
           })
         } catch (e) {
           console.error('Failed to load settings:', e)
@@ -563,8 +665,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId }))
     }
   },
 }))
