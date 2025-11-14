@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { EntityType, EntityInstance, DEFAULT_ENTITIES } from './entities'
+import { EntityType, EntityInstance, DEFAULT_ENTITIES, ContactAddress, LinkedContact } from './entities'
 
 export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors'
 
@@ -54,8 +54,8 @@ interface AppState {
   currentEntityView: string | null
   currentEntityId: string | null
   setEntityType: (entityTypeId: string, config: Partial<EntityType>) => void
-  createEntity: (entityTypeId: string, data: any) => void
-  updateEntity: (id: string, data: any) => void
+  createEntity: (entityTypeId: string, data: any, addresses?: ContactAddress[], linkedContacts?: LinkedContact[]) => void
+  updateEntity: (id: string, data: any, addresses?: ContactAddress[], linkedContacts?: LinkedContact[]) => void
   deleteEntity: (id: string) => void
   getEntity: (id: string) => EntityInstance | undefined
   getEntitiesByType: (entityTypeId: string) => EntityInstance[]
@@ -171,7 +171,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       [entityTypeId]: { ...state.entityTypes[entityTypeId], ...config }
     }
   })),
-  createEntity: (entityTypeId, data) => set((state) => {
+  createEntity: (entityTypeId, data, addresses?, linkedContacts?) => set((state) => {
     const newEntity: EntityInstance = {
       id: `${entityTypeId}_${Date.now()}`,
       entityType: entityTypeId,
@@ -179,14 +179,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       updatedAt: Date.now(),
       status: state.entityTypes[entityTypeId]?.fields.find(f => f.name === 'status')?.defaultValue || 'active',
       data,
-      relationships: {}
+      relationships: {},
+      addresses: addresses || [],
+      linkedContacts: linkedContacts || []
     }
     return { entities: [...state.entities, newEntity] }
   }),
-  updateEntity: (id, data) => set((state) => ({
+  updateEntity: (id, data, addresses?, linkedContacts?) => set((state) => ({
     entities: state.entities.map(entity =>
       entity.id === id
-        ? { ...entity, data: { ...entity.data, ...data }, updatedAt: Date.now() }
+        ? {
+            ...entity,
+            data: { ...entity.data, ...data },
+            addresses: addresses !== undefined ? addresses : entity.addresses,
+            linkedContacts: linkedContacts !== undefined ? linkedContacts : entity.linkedContacts,
+            updatedAt: Date.now()
+          }
         : entity
     )
   })),

@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   Truck,
   UserCheck,
+  Shield,
   Plus,
   AlertCircle,
   Clock,
@@ -135,6 +136,16 @@ export default function JobsBusiness() {
       bgColor: 'bg-pink-500/10',
       count: getCounts('subcontractor'),
       enabled: getEntityType('subcontractor')?.enabled
+    },
+    {
+      id: 'official',
+      title: 'Officials & Inspectors',
+      description: 'Inspectors, permits, officials',
+      icon: Shield,
+      color: 'text-indigo-500',
+      bgColor: 'bg-indigo-500/10',
+      count: getCounts('official'),
+      enabled: getEntityType('official')?.enabled
     },
   ]
 

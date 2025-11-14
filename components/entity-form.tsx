@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Save, X } from 'lucide-react'
-import { EntityField } from '@/lib/entities'
+import { EntityField, ContactAddress, LinkedContact } from '@/lib/entities'
+import AddressManager from '@/components/address-manager'
+import LinkedContactsManager from '@/components/linked-contacts-manager'
 
 interface EntityFormProps {
   entityTypeId: string
@@ -30,10 +32,17 @@ export default function EntityForm({ entityTypeId, entityId }: EntityFormProps) 
   // Initialize form data
   const [formData, setFormData] = useState<{ [key: string]: any }>({})
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  const [addresses, setAddresses] = useState<ContactAddress[]>([])
+  const [linkedContacts, setLinkedContacts] = useState<LinkedContact[]>([])
+
+  // Determine if this entity type should show address/contact managers
+  const isContactEntity = ['customer', 'vendor', 'subcontractor', 'official'].includes(entityTypeId)
 
   useEffect(() => {
     if (existingEntity) {
       setFormData(existingEntity.data)
+      setAddresses(existingEntity.addresses || [])
+      setLinkedContacts(existingEntity.linkedContacts || [])
     } else {
       // Set default values
       const defaults: { [key: string]: any } = {}
@@ -43,6 +52,8 @@ export default function EntityForm({ entityTypeId, entityId }: EntityFormProps) 
         }
       })
       setFormData(defaults)
+      setAddresses([])
+      setLinkedContacts([])
     }
   }, [existingEntity, entityType])
 
@@ -96,9 +107,9 @@ export default function EntityForm({ entityTypeId, entityId }: EntityFormProps) 
     }
 
     if (existingEntity) {
-      updateEntity(existingEntity.id, formData)
+      updateEntity(existingEntity.id, formData, addresses, linkedContacts)
     } else {
-      createEntity(entityTypeId, formData)
+      createEntity(entityTypeId, formData, addresses, linkedContacts)
     }
 
     // Navigate back to list
@@ -301,6 +312,21 @@ export default function EntityForm({ entityTypeId, entityId }: EntityFormProps) 
                 .map((field) => renderField(field))}
             </CardContent>
           </Card>
+
+          {/* Address and Linked Contacts Management for Contact Entities */}
+          {isContactEntity && (
+            <>
+              <AddressManager
+                addresses={addresses}
+                onChange={setAddresses}
+              />
+
+              <LinkedContactsManager
+                linkedContacts={linkedContacts}
+                onChange={setLinkedContacts}
+              />
+            </>
+          )}
 
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={handleCancel}>

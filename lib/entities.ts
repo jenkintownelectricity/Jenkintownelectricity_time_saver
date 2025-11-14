@@ -70,6 +70,8 @@ export interface EntityInstance {
   relationships: {
     [relationshipId: string]: string[] // Array of related entity IDs
   }
+  addresses?: ContactAddress[] // Multiple addresses per contact
+  linkedContacts?: LinkedContact[] // Sub-contacts with roles
   comments?: Comment[]
   attachments?: Attachment[]
   history?: HistoryEntry[]
@@ -102,6 +104,49 @@ export interface HistoryEntry {
   oldValue?: any
   newValue?: any
   timestamp: number
+}
+
+// Contact Address System
+export type AddressType = 'Billing' | 'Shipping' | 'Project Site' | 'Office' | 'Home' | 'Other'
+
+export interface ContactAddress {
+  id: string
+  type: AddressType
+  isPrimary: boolean
+  street1: string
+  street2?: string
+  city: string
+  state: string
+  zip: string
+  country?: string
+  notes?: string
+}
+
+// Sub-Contact/Linked Contact System
+export type ContactRole =
+  | 'Primary Contact'
+  | 'Billing Contact'
+  | 'Payment Contact'
+  | 'On-Site Contact'
+  | 'Project Manager'
+  | 'Facilities Manager'
+  | 'Property Manager'
+  | 'Tenant'
+  | 'Landlord'
+  | 'Owner'
+  | 'Authorized Representative'
+  | 'Emergency Contact'
+  | 'Other'
+
+export interface LinkedContact {
+  id: string
+  name: string
+  role: ContactRole
+  email?: string
+  phone?: string
+  title?: string
+  notes?: string
+  isPrimary: boolean
 }
 
 // Default Entity Configurations
@@ -314,6 +359,36 @@ export const DEFAULT_ENTITIES: { [key: string]: EntityType } = {
       { id: 'notes', name: 'notes', label: 'Notes', type: 'textarea', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
     ],
     relationships: {},
+    features: {
+      create: true, read: true, update: true, delete: true,
+      export: true, import: true, duplicate: true, archive: true,
+      comments: true, attachments: true, history: true, notifications: true,
+    }
+  },
+
+  official: {
+    id: 'official',
+    name: 'Official/Inspector',
+    namePlural: 'Officials & Inspectors',
+    icon: 'shield',
+    color: '#6366f1',
+    enabled: true,
+    fields: [
+      { id: 'name', name: 'name', label: 'Name', type: 'text', required: true, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'title', name: 'title', label: 'Title/Position', type: 'text', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'type', name: 'type', label: 'Type', type: 'select', required: true, enabled: true, options: ['Building Inspector', 'Electrical Inspector', 'Fire Marshal', 'Code Enforcement', 'Police/Law Enforcement', 'Attorney', 'Permit Office', 'Zoning Official', 'Other'], permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'department', name: 'department', label: 'Department/Agency', type: 'text', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'jurisdiction', name: 'jurisdiction', label: 'Jurisdiction', type: 'text', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'email', name: 'email', label: 'Email', type: 'email', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'phone', name: 'phone', label: 'Phone', type: 'phone', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'officeAddress', name: 'officeAddress', label: 'Office Address', type: 'textarea', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'badgeNumber', name: 'badgeNumber', label: 'Badge/ID Number', type: 'text', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'specialties', name: 'specialties', label: 'Specialties/Areas', type: 'textarea', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+      { id: 'notes', name: 'notes', label: 'Notes', type: 'textarea', required: false, enabled: true, permissions: { view: true, edit: true, adminOnly: false } },
+    ],
+    relationships: {
+      jobs: { type: 'many-to-many', targetEntity: 'job', enabled: true },
+    },
     features: {
       create: true, read: true, update: true, delete: true,
       export: true, import: true, duplicate: true, archive: true,
