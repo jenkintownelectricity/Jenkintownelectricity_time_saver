@@ -216,7 +216,7 @@ export default function WorkOrders() {
       setFormData({
         ...formData,
         jobId: job.id,
-        jobName: job.data.name || job.data.address || 'Unknown'
+        jobName: job.data.title || job.data.jobNumber || job.data.address || 'Unknown'
       })
     }
   }
@@ -530,7 +530,7 @@ export default function WorkOrders() {
                       <option value="">Select job...</option>
                       {jobs.map(job => (
                         <option key={job.id} value={job.id}>
-                          {job.data.name || job.data.address}
+                          {job.data.title || job.data.jobNumber || job.data.address || 'Untitled Job'}
                         </option>
                       ))}
                     </select>

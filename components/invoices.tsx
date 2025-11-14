@@ -662,7 +662,7 @@ export default function Invoices() {
                     <option value="">Select Job</option>
                     {jobs.map(job => (
                       <option key={job.id} value={job.id}>
-                        {job.data.name}
+                        {job.data.title || job.data.jobNumber || job.data.address || 'Untitled Job'}
                       </option>
                     ))}
                   </select>
