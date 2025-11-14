@@ -48,6 +48,24 @@ export interface CompanyProfile {
   defaultPaymentTerms?: string
   defaultTermsAndConditions?: string
 
+  // Document Numbering
+  numberingFormat?: {
+    estimatePrefix?: string // e.g., "EST", "QUOTE", "E"
+    estimateIncludeYear?: boolean
+    estimateNextNumber?: number
+    estimatePadding?: number // e.g., 3 for "001", 4 for "0001"
+
+    workOrderPrefix?: string // e.g., "WO", "WORK", "W"
+    workOrderIncludeYear?: boolean
+    workOrderNextNumber?: number
+    workOrderPadding?: number
+
+    invoicePrefix?: string // e.g., "INV", "INVOICE", "I"
+    invoiceIncludeYear?: boolean
+    invoiceNextNumber?: number
+    invoicePadding?: number
+  }
+
   // Status
   isActive: boolean
   isDefault: boolean
@@ -72,7 +90,23 @@ export const createDefaultCompanyProfile = (): Omit<CompanyProfile, 'id' | 'crea
   isDefault: true,
   defaultTaxRate: 6,
   defaultPaymentTerms: 'Net 30',
-  defaultTermsAndConditions: 'Payment is due upon completion. A 50% deposit may be required for large projects.'
+  defaultTermsAndConditions: 'Payment is due upon completion. A 50% deposit may be required for large projects.',
+  numberingFormat: {
+    estimatePrefix: 'EST',
+    estimateIncludeYear: true,
+    estimateNextNumber: 1,
+    estimatePadding: 3,
+
+    workOrderPrefix: 'WO',
+    workOrderIncludeYear: true,
+    workOrderNextNumber: 1,
+    workOrderPadding: 3,
+
+    invoicePrefix: 'INV',
+    invoiceIncludeYear: true,
+    invoiceNextNumber: 1,
+    invoicePadding: 3
+  }
 })
 
 // Helper to get display name (prefers DBA if exists)
@@ -112,4 +146,76 @@ export function isCompanyConfigured(profile: CompanyProfile): boolean {
     profile.address.state &&
     profile.address.zip
   )
+}
+
+// Helper to generate next document number
+export type DocumentType = 'estimate' | 'workOrder' | 'invoice'
+
+export function generateDocumentNumber(
+  profile: CompanyProfile,
+  type: DocumentType
+): string {
+  const format = profile.numberingFormat || createDefaultCompanyProfile().numberingFormat!
+
+  let prefix: string
+  let includeYear: boolean
+  let nextNumber: number
+  let padding: number
+
+  switch (type) {
+    case 'estimate':
+      prefix = format.estimatePrefix || 'EST'
+      includeYear = format.estimateIncludeYear ?? true
+      nextNumber = format.estimateNextNumber || 1
+      padding = format.estimatePadding || 3
+      break
+    case 'workOrder':
+      prefix = format.workOrderPrefix || 'WO'
+      includeYear = format.workOrderIncludeYear ?? true
+      nextNumber = format.workOrderNextNumber || 1
+      padding = format.workOrderPadding || 3
+      break
+    case 'invoice':
+      prefix = format.invoicePrefix || 'INV'
+      includeYear = format.invoiceIncludeYear ?? true
+      nextNumber = format.invoiceNextNumber || 1
+      padding = format.invoicePadding || 3
+      break
+  }
+
+  const year = new Date().getFullYear()
+  const paddedNumber = nextNumber.toString().padStart(padding, '0')
+
+  if (includeYear) {
+    return `${prefix}-${year}-${paddedNumber}`
+  } else {
+    return `${prefix}-${paddedNumber}`
+  }
+}
+
+// Helper to increment document counter
+export function incrementDocumentCounter(
+  profile: CompanyProfile,
+  type: DocumentType
+): CompanyProfile {
+  const format = profile.numberingFormat || createDefaultCompanyProfile().numberingFormat!
+  const updatedFormat = { ...format }
+
+  switch (type) {
+    case 'estimate':
+      updatedFormat.estimateNextNumber = (format.estimateNextNumber || 1) + 1
+      break
+    case 'workOrder':
+      updatedFormat.workOrderNextNumber = (format.workOrderNextNumber || 1) + 1
+      break
+    case 'invoice':
+      updatedFormat.invoiceNextNumber = (format.invoiceNextNumber || 1) + 1
+      break
+  }
+
+  return {
+    ...profile,
+    numberingFormat: updatedFormat,
+    updatedAt: Date.now()
+  }
 }

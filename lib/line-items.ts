@@ -26,6 +26,7 @@ export interface LineItem {
 export interface EstimateDocument {
   id: string
   number: string
+  companyId?: string
   customerId?: string
   customerName: string
   jobId?: string
@@ -48,6 +49,7 @@ export interface EstimateDocument {
 export interface WorkOrderDocument {
   id: string
   number: string
+  companyId?: string
   customerId?: string
   customerName: string
   jobId?: string
@@ -72,6 +74,7 @@ export interface WorkOrderDocument {
 export interface InvoiceDocument {
   id: string
   number: string
+  companyId?: string
   customerId?: string
   customerName: string
   jobId?: string

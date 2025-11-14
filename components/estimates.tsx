@@ -44,7 +44,6 @@ export default function Estimates() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
 
   const [formData, setFormData] = useState<{
-    number: string
     customerName: string
     customerId: string
     jobName: string
@@ -57,7 +56,6 @@ export default function Estimates() {
     termsAndConditions: string
     includeTerms: boolean
   }>({
-    number: `EST-${Date.now()}`,
     customerName: '',
     customerId: '',
     jobName: '',
@@ -93,7 +91,6 @@ export default function Estimates() {
 
   const handleCreate = () => {
     setFormData({
-      number: `EST-${Date.now()}`,
       customerName: '',
       customerId: '',
       jobName: '',
@@ -112,7 +109,6 @@ export default function Estimates() {
 
   const handleEdit = (estimate: EstimateDocument) => {
     setFormData({
-      number: estimate.number,
       customerName: estimate.customerName,
       customerId: estimate.customerId || '',
       jobName: estimate.jobName || '',
@@ -148,8 +144,7 @@ export default function Estimates() {
 
     const totals = calculateDocumentTotals(lineItems, formData.taxRate)
 
-    const estimateData: Omit<EstimateDocument, 'id' | 'createdAt' | 'updatedAt'> = {
-      number: formData.number,
+    const estimateData: Omit<EstimateDocument, 'id' | 'number' | 'companyId' | 'createdAt' | 'updatedAt'> = {
       customerName: formData.customerName,
       customerId: formData.customerId || undefined,
       jobName: formData.jobName || undefined,
@@ -380,7 +375,9 @@ export default function Estimates() {
               <h1 className="text-3xl font-bold">
                 {view === 'edit' ? 'Edit' : 'New'} Estimate
               </h1>
-              <p className="text-muted-foreground mt-1">{formData.number}</p>
+              <p className="text-muted-foreground mt-1">
+                {view === 'edit' && selectedEstimate ? selectedEstimate.number : 'Number will be auto-generated'}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -404,14 +401,17 @@ export default function Estimates() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Estimate Number</label>
-                    <Input
-                      value={formData.number}
-                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                    />
-                  </div>
-                  <div>
+                  {view === 'edit' && selectedEstimate && (
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Estimate Number</label>
+                      <Input
+                        value={selectedEstimate.number}
+                        disabled
+                        className="bg-muted"
+                      />
+                    </div>
+                  )}
+                  <div className={view === 'create' ? 'col-span-2' : ''}>
                     <label className="text-sm font-medium mb-1 block">Status</label>
                     <select
                       value={formData.status}

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { EntityType, EntityInstance, DEFAULT_ENTITIES, ContactAddress, LinkedContact } from './entities'
 import { TaxDocument, TaxPackage, getQuarterFromDate } from './tax-documents'
 import { EstimateDocument, WorkOrderDocument, InvoiceDocument, calculateDocumentTotals } from './line-items'
-import { CompanyProfile, createDefaultCompanyProfile } from './company-profiles'
+import { CompanyProfile, createDefaultCompanyProfile, generateDocumentNumber, incrementDocumentCounter } from './company-profiles'
 
 export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices'
 
@@ -79,15 +79,15 @@ interface AppState {
   estimates: EstimateDocument[]
   workOrders: WorkOrderDocument[]
   invoices: InvoiceDocument[]
-  addEstimate: (estimate: Omit<EstimateDocument, 'id' | 'createdAt' | 'updatedAt'>) => string
+  addEstimate: (estimate: Omit<EstimateDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> & { companyId?: string }) => string
   updateEstimate: (id: string, updates: Partial<EstimateDocument>) => void
   deleteEstimate: (id: string) => void
   getEstimate: (id: string) => EstimateDocument | undefined
-  addWorkOrder: (workOrder: Omit<WorkOrderDocument, 'id' | 'createdAt' | 'updatedAt'>) => string
+  addWorkOrder: (workOrder: Omit<WorkOrderDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> & { companyId?: string }) => string
   updateWorkOrder: (id: string, updates: Partial<WorkOrderDocument>) => void
   deleteWorkOrder: (id: string) => void
   getWorkOrder: (id: string) => WorkOrderDocument | undefined
-  addInvoice: (invoice: Omit<InvoiceDocument, 'id' | 'createdAt' | 'updatedAt'>) => string
+  addInvoice: (invoice: Omit<InvoiceDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> & { companyId?: string }) => string
   updateInvoice: (id: string, updates: Partial<InvoiceDocument>) => void
   deleteInvoice: (id: string) => void
   getInvoice: (id: string) => InvoiceDocument | undefined
@@ -334,16 +334,55 @@ export const useAppStore = create<AppState>((set, get) => ({
   invoices: [],
 
   addEstimate: (estimate) => {
+    const state = get()
     const now = Date.now()
+
+    // Get company for numbering (use estimate's companyId, current company, or default)
+    let company = estimate.companyId
+      ? state.companyProfiles.find(p => p.id === estimate.companyId)
+      : state.currentCompanyId
+        ? state.companyProfiles.find(p => p.id === state.currentCompanyId)
+        : state.companyProfiles.find(p => p.isDefault) || state.companyProfiles[0]
+
+    // If no company exists, create a default one
+    if (!company) {
+      const defaultProfile = createDefaultCompanyProfile()
+      const newCompanyId = `company_${now}`
+      const newCompany: CompanyProfile = {
+        ...defaultProfile,
+        id: newCompanyId,
+        createdAt: now,
+        updatedAt: now
+      }
+      set((state) => ({
+        companyProfiles: [...state.companyProfiles, newCompany],
+        currentCompanyId: newCompanyId
+      }))
+      company = newCompany
+    }
+
+    // Generate document number
+    const documentNumber = generateDocumentNumber(company, 'estimate')
+
     const newEstimate: EstimateDocument = {
       ...estimate,
       id: `est_${now}`,
+      number: documentNumber,
+      companyId: company.id,
       createdAt: now,
       updatedAt: now
     }
+
+    // Increment counter and update company
+    const updatedCompany = incrementDocumentCounter(company, 'estimate')
+
     set((state) => ({
-      estimates: [...state.estimates, newEstimate]
+      estimates: [...state.estimates, newEstimate],
+      companyProfiles: state.companyProfiles.map(p =>
+        p.id === company.id ? updatedCompany : p
+      )
     }))
+
     return newEstimate.id
   },
 
@@ -365,16 +404,52 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addWorkOrder: (workOrder) => {
+    const state = get()
     const now = Date.now()
+
+    // Get company for numbering
+    let company = workOrder.companyId
+      ? state.companyProfiles.find(p => p.id === workOrder.companyId)
+      : state.currentCompanyId
+        ? state.companyProfiles.find(p => p.id === state.currentCompanyId)
+        : state.companyProfiles.find(p => p.isDefault) || state.companyProfiles[0]
+
+    if (!company) {
+      const defaultProfile = createDefaultCompanyProfile()
+      const newCompanyId = `company_${now}`
+      const newCompany: CompanyProfile = {
+        ...defaultProfile,
+        id: newCompanyId,
+        createdAt: now,
+        updatedAt: now
+      }
+      set((state) => ({
+        companyProfiles: [...state.companyProfiles, newCompany],
+        currentCompanyId: newCompanyId
+      }))
+      company = newCompany
+    }
+
+    const documentNumber = generateDocumentNumber(company, 'workOrder')
+
     const newWorkOrder: WorkOrderDocument = {
       ...workOrder,
       id: `wo_${now}`,
+      number: documentNumber,
+      companyId: company.id,
       createdAt: now,
       updatedAt: now
     }
+
+    const updatedCompany = incrementDocumentCounter(company, 'workOrder')
+
     set((state) => ({
-      workOrders: [...state.workOrders, newWorkOrder]
+      workOrders: [...state.workOrders, newWorkOrder],
+      companyProfiles: state.companyProfiles.map(p =>
+        p.id === company.id ? updatedCompany : p
+      )
     }))
+
     return newWorkOrder.id
   },
 
@@ -396,16 +471,52 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addInvoice: (invoice) => {
+    const state = get()
     const now = Date.now()
+
+    // Get company for numbering
+    let company = invoice.companyId
+      ? state.companyProfiles.find(p => p.id === invoice.companyId)
+      : state.currentCompanyId
+        ? state.companyProfiles.find(p => p.id === state.currentCompanyId)
+        : state.companyProfiles.find(p => p.isDefault) || state.companyProfiles[0]
+
+    if (!company) {
+      const defaultProfile = createDefaultCompanyProfile()
+      const newCompanyId = `company_${now}`
+      const newCompany: CompanyProfile = {
+        ...defaultProfile,
+        id: newCompanyId,
+        createdAt: now,
+        updatedAt: now
+      }
+      set((state) => ({
+        companyProfiles: [...state.companyProfiles, newCompany],
+        currentCompanyId: newCompanyId
+      }))
+      company = newCompany
+    }
+
+    const documentNumber = generateDocumentNumber(company, 'invoice')
+
     const newInvoice: InvoiceDocument = {
       ...invoice,
       id: `inv_${now}`,
+      number: documentNumber,
+      companyId: company.id,
       createdAt: now,
       updatedAt: now
     }
+
+    const updatedCompany = incrementDocumentCounter(company, 'invoice')
+
     set((state) => ({
-      invoices: [...state.invoices, newInvoice]
+      invoices: [...state.invoices, newInvoice],
+      companyProfiles: state.companyProfiles.map(p =>
+        p.id === company.id ? updatedCompany : p
+      )
     }))
+
     return newInvoice.id
   },
 
@@ -432,8 +543,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!estimate) return ''
 
     const now = Date.now()
-    const workOrder: Omit<WorkOrderDocument, 'id' | 'createdAt' | 'updatedAt'> = {
-      number: `WO-${now}`,
+    const workOrder: Omit<WorkOrderDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> = {
+      companyId: estimate.companyId,
       customerId: estimate.customerId,
       customerName: estimate.customerName,
       jobId: estimate.jobId,
@@ -457,8 +568,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!workOrder) return ''
 
     const now = Date.now()
-    const invoice: Omit<InvoiceDocument, 'id' | 'createdAt' | 'updatedAt'> = {
-      number: `INV-${now}`,
+    const invoice: Omit<InvoiceDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> = {
+      companyId: workOrder.companyId,
       customerId: workOrder.customerId,
       customerName: workOrder.customerName,
       jobId: workOrder.jobId,
