@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Users, UserPlus, Trash2, Phone, Mail, AlertCircle, Check, Zap, Filter, X, ArrowLeft } from 'lucide-react'
+import { Users, UserPlus, Trash2, Phone, Mail, AlertCircle, Check, Zap, Filter, X, ArrowLeft, Link as LinkIcon, ExternalLink } from 'lucide-react'
 
 type FilterType = 'all' | 'employee' | '1099' | 'subcontractor' | 'contractor_for' | 'on-call-available'
 
 export default function TeamManagement() {
-  const { teamMembers, addTeamMember, updateTeamMember, removeTeamMember, toggleOnCallAvailable, setOnCall, onCallStatus, setCurrentEntityView } = useAppStore()
+  const { teamMembers, addTeamMember, updateTeamMember, removeTeamMember, toggleOnCallAvailable, setOnCall, onCallStatus, setCurrentEntityView, getEntity, entities } = useAppStore()
   const [showAddModal, setShowAddModal] = useState(false)
   const [filter, setFilter] = useState<FilterType>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -21,7 +21,8 @@ export default function TeamManagement() {
     email: '',
     type: 'employee' as 'employee' | '1099' | 'subcontractor' | 'contractor_for',
     onCallAvailable: false,
-    notes: ''
+    notes: '',
+    syncToEntity: true // Default to syncing
   })
 
   const handleAddMember = () => {
@@ -32,7 +33,8 @@ export default function TeamManagement() {
         email: newMember.email.trim() || undefined,
         type: newMember.type,
         onCallAvailable: newMember.onCallAvailable,
-        notes: newMember.notes.trim() || undefined
+        notes: newMember.notes.trim() || undefined,
+        syncToEntity: newMember.syncToEntity
       })
       setNewMember({
         name: '',
@@ -40,7 +42,8 @@ export default function TeamManagement() {
         email: '',
         type: 'employee',
         onCallAvailable: false,
-        notes: ''
+        notes: '',
+        syncToEntity: true
       })
       setShowAddModal(false)
     }
@@ -85,6 +88,16 @@ export default function TeamManagement() {
       case 'subcontractor': return 'bg-orange-500 text-white'
       case 'contractor_for': return 'bg-green-500 text-white'
       default: return 'bg-gray-500 text-white'
+    }
+  }
+
+  const getEntityTypeName = (type: string) => {
+    switch (type) {
+      case 'subcontractor': return 'Subcontractors'
+      case 'contractor_for': return 'Vendors'
+      case '1099': return 'Subcontractors'
+      case 'employee': return 'Customers'
+      default: return 'Entities'
     }
   }
 
@@ -224,6 +237,12 @@ export default function TeamManagement() {
                           Currently On-Call
                         </Badge>
                       )}
+                      {member.entityId && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <LinkIcon className="w-3 h-3" />
+                          Linked to {getEntityTypeName(member.type)}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="space-y-1 text-sm">
@@ -274,6 +293,22 @@ export default function TeamManagement() {
                       >
                         <Zap className="w-4 h-4 mr-1" />
                         Set On-Call
+                      </Button>
+                    )}
+                    {member.entityId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const entity = getEntity(member.entityId!)
+                          if (entity) {
+                            alert(`Linked Entity:\nType: ${entity.entityType}\nName: ${entity.data.name || 'N/A'}\nPhone: ${entity.data.phone || 'N/A'}\nEmail: ${entity.data.email || 'N/A'}`)
+                          }
+                        }}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        View Entity
                       </Button>
                     )}
                     <Button
@@ -376,6 +411,24 @@ export default function TeamManagement() {
                 </Button>
               </div>
 
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="font-medium text-sm">Link to Entity Card?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Also add to {newMember.type === 'subcontractor' ? 'Subcontractors' : newMember.type === 'contractor_for' ? 'Vendors' : newMember.type === '1099' ? 'Subcontractors' : 'Customers'} section
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={newMember.syncToEntity ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setNewMember({ ...newMember, syncToEntity: !newMember.syncToEntity })}
+                  className={newMember.syncToEntity ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                >
+                  {newMember.syncToEntity ? 'YES' : 'NO'}
+                </Button>
+              </div>
+
               <div className="flex gap-3 justify-end pt-4 border-t">
                 <Button
                   variant="outline"
@@ -387,7 +440,8 @@ export default function TeamManagement() {
                       email: '',
                       type: 'employee',
                       onCallAvailable: false,
-                      notes: ''
+                      notes: '',
+                      syncToEntity: true
                     })
                   }}
                 >

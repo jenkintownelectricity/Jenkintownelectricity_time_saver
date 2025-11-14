@@ -45,6 +45,8 @@ export interface TeamMember {
   createdAt: number
   memberNumber?: string // Unique member identifier
   linkedToAccount?: boolean // Whether this member has their own app account
+  entityId?: string // Link to entity card (subcontractor, vendor, etc.)
+  syncToEntity?: boolean // Whether to sync this member to entity system
 }
 
 export interface UserProfile {
@@ -174,7 +176,7 @@ interface AppState {
   currentEntityView: string | null
   currentEntityId: string | null
   setEntityType: (entityTypeId: string, config: Partial<EntityType>) => void
-  createEntity: (entityTypeId: string, data: any, addresses?: ContactAddress[], linkedContacts?: LinkedContact[]) => void
+  createEntity: (entityTypeId: string, data: any, addresses?: ContactAddress[], linkedContacts?: LinkedContact[]) => string
   updateEntity: (id: string, data: any, addresses?: ContactAddress[], linkedContacts?: LinkedContact[]) => void
   deleteEntity: (id: string) => void
   getEntity: (id: string) => EntityInstance | undefined
@@ -359,6 +361,29 @@ export const useAppStore = create<AppState>((set, get) => ({
       id: `team_${Date.now()}`,
       createdAt: Date.now()
     }
+
+    // If syncToEntity is true, also create corresponding entity
+    if (member.syncToEntity) {
+      const entityTypeMap: { [key: string]: string } = {
+        'subcontractor': 'subcontractor',
+        'contractor_for': 'vendor',
+        '1099': 'subcontractor',
+        'employee': 'customer' // Can be changed to employee entity type if created
+      }
+
+      const entityType = entityTypeMap[member.type]
+      if (entityType) {
+        const entityId = get().createEntity(entityType, {
+          name: member.name,
+          phone: member.phone,
+          email: member.email || '',
+          notes: member.notes || '',
+          status: 'active'
+        })
+        newMember.entityId = entityId
+      }
+    }
+
     set((state) => ({
       teamMembers: [...state.teamMembers, newMember]
     }))
@@ -606,9 +631,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   })),
   createEntity: (entityTypeId, data, addresses?, linkedContacts?) => {
+    const entityId = `${entityTypeId}_${Date.now()}`
     set((state) => {
       const newEntity: EntityInstance = {
-        id: `${entityTypeId}_${Date.now()}`,
+        id: entityId,
         entityType: entityTypeId,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -621,6 +647,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { entities: [...state.entities, newEntity] }
     })
     get().saveSettings()
+    return entityId
   },
   updateEntity: (id, data, addresses?, linkedContacts?) => {
     set((state) => ({
