@@ -273,12 +273,21 @@ export default function Estimates() {
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Estimate ${estimate.number} synced to QuickBooks successfully!`)
+        alert(`✅ Estimate ${estimate.number} synced to QuickBooks successfully!`)
       } else {
-        alert(`Failed to sync to QuickBooks: ${data.error}`)
+        // Show detailed error message
+        let errorMsg = `Failed to sync to QuickBooks: ${data.error}`
+        if (data.details?.Fault?.Error) {
+          const qbError = data.details.Fault.Error[0]
+          errorMsg += `\n\nQuickBooks Error: ${qbError.Message}`
+          if (qbError.Detail) {
+            errorMsg += `\nDetails: ${qbError.Detail}`
+          }
+        }
+        alert(errorMsg)
       }
     } catch (error) {
-      alert('Error syncing to QuickBooks. Please try again.')
+      alert('Error syncing to QuickBooks. Please check your connection and try again.')
     }
   }
 

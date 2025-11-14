@@ -12,20 +12,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Map invoice to QuickBooks Invoice format
+    // Using simplified line items that work without pre-existing items
     const qbInvoice = {
       Line: invoice.lineItems.map((item: any, index: number) => ({
-        Id: (index + 1).toString(),
-        LineNum: index + 1,
-        Description: item.description,
+        DetailType: 'DescriptionOnly',
+        Description: `${item.description} - Qty: ${item.quantity} @ $${item.rate}`,
         Amount: item.total,
-        DetailType: 'SalesItemLineDetail',
-        SalesItemLineDetail: {
-          Qty: item.quantity,
-          UnitPrice: item.rate,
-          ItemRef: {
-            name: item.description.substring(0, 100) // QuickBooks has 100 char limit
-          }
-        }
+        LineNum: index + 1
       })),
       CustomerRef: {
         name: invoice.customerName
@@ -38,15 +31,7 @@ export async function POST(request: NextRequest) {
       PrivateNote: invoice.notes || '',
       CustomerMemo: {
         value: invoice.notes || ''
-      },
-      TxnTaxDetail: {
-        TotalTax: invoice.taxAmount
-      },
-      BillEmail: {
-        Address: company.email
-      },
-      Balance: invoice.balance,
-      Deposit: invoice.amountPaid > 0 ? invoice.amountPaid : undefined
+      }
     }
 
     // Send to QuickBooks API
