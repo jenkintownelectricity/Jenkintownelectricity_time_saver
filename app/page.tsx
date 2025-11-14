@@ -76,13 +76,14 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+              <div className="w-16 h-16 flex items-center justify-center">
                 <Image
                   src="/icon.png"
                   alt="AppIo.AI Logo"
-                  width={48}
-                  height={48}
-                  className="object-contain"
+                  width={64}
+                  height={64}
+                  className="object-contain w-full h-full"
+                  priority
                 />
               </div>
               <div>
