@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import ShareMenu from '@/components/share-menu'
 import {
   ArrowLeft,
   Plus,
@@ -15,7 +16,9 @@ import {
   Eye,
   Filter,
   Download,
-  Upload
+  Upload,
+  Share2,
+  X
 } from 'lucide-react'
 import { EntityType } from '@/lib/entities'
 
@@ -30,24 +33,83 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
     entities,
     getEntitiesByType,
     deleteEntity,
-    setCurrentEntityView
+    setCurrentEntityView,
+    createEntity
   } = useAppStore()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [showShareMenu, setShowShareMenu] = useState<any>(null)
+  const [filterStatus, setFilterStatus] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const entityType = entityTypes[entityTypeId]
   const entityList = getEntitiesByType(entityTypeId)
 
-  // Filter entities based on search
+  // Filter entities based on search and status filter
   const filteredEntities = entityList.filter((entity) => {
-    if (!searchQuery) return true
+    // Search filter
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase()
+      const matchesSearch = Object.values(entity.data).some((value) =>
+        String(value).toLowerCase().includes(searchLower)
+      )
+      if (!matchesSearch) return false
+    }
 
-    const searchLower = searchQuery.toLowerCase()
-    return Object.values(entity.data).some((value) =>
-      String(value).toLowerCase().includes(searchLower)
-    )
+    // Status filter
+    if (filterStatus && entity.data.status !== filterStatus) {
+      return false
+    }
+
+    return true
   })
+
+  const handleExport = () => {
+    // Export all filtered entities as JSON
+    const dataStr = JSON.stringify(filteredEntities, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${entityType.namePlural.toLowerCase()}-export-${Date.now()}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target?.result as string)
+        if (Array.isArray(imported)) {
+          imported.forEach((entity) => {
+            createEntity(entityTypeId, entity.data)
+          })
+          alert(`Successfully imported ${imported.length} ${entityType.namePlural.toLowerCase()}`)
+        }
+      } catch (error) {
+        alert('Error importing file. Please ensure it\'s a valid JSON export.')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleBackToJobs = () => {
+    setCurrentEntityView(null, null)
+    setCurrentSection('jobs')
+  }
+
+  // Get unique status values for filter
+  const statusOptions = Array.from(
+    new Set(entityList.map(e => e.data.status).filter(Boolean))
+  )
 
   const handleDelete = (id: string) => {
     deleteEntity(id)
@@ -113,13 +175,16 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCurrentSection('jobs')}
+              onClick={handleBackToJobs}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex-1">
               <h1 className="text-xl font-bold text-foreground">{entityType.namePlural}</h1>
-              <p className="text-xs text-muted-foreground">{entityList.length} total</p>
+              <p className="text-xs text-muted-foreground">
+                {filteredEntities.length} of {entityList.length} total
+                {filterStatus && <Badge className="ml-2" variant="outline">{filterStatus}</Badge>}
+              </p>
             </div>
             <Button onClick={handleCreate}>
               <Plus className="w-4 h-4 mr-2" />
@@ -144,13 +209,78 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
                     className="pl-10"
                   />
                 </div>
-                <Button variant="outline" size="icon">
-                  <Filter className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="icon">
+
+                {/* Filter Dropdown */}
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowFilterModal(!showFilterModal)}
+                  >
+                    <Filter className="w-4 h-4" />
+                  </Button>
+                  {showFilterModal && (
+                    <div className="absolute right-0 mt-2 w-56 bg-card border rounded-lg shadow-lg z-20">
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-semibold text-foreground">Filter by Status</p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => setShowFilterModal(false)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => {
+                              setFilterStatus('')
+                              setShowFilterModal(false)
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded text-sm ${
+                              filterStatus === '' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                            }`}
+                          >
+                            All
+                          </button>
+                          {statusOptions.map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => {
+                                setFilterStatus(status)
+                                setShowFilterModal(false)
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded text-sm ${
+                                filterStatus === status ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                              }`}
+                            >
+                              {status}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Button variant="outline" size="icon" onClick={handleExport}>
                   <Download className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="icon">
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Upload className="w-4 h-4" />
                 </Button>
               </div>
@@ -242,6 +372,13 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => setShowShareMenu(entity)}
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setShowDeleteConfirm(entity.id)}
                           >
                             <Trash2 className="w-4 h-4 text-red-500" />
@@ -286,6 +423,15 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Share Menu Modal */}
+      {showShareMenu && (
+        <ShareMenu
+          entityType={entityType.name}
+          entityData={showShareMenu}
+          onClose={() => setShowShareMenu(null)}
+        />
       )}
     </div>
   )
