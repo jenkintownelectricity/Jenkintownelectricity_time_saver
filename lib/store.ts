@@ -93,6 +93,9 @@ interface AppState {
   getInvoice: (id: string) => InvoiceDocument | undefined
   convertEstimateToWorkOrder: (estimateId: string) => string
   convertWorkOrderToInvoice: (workOrderId: string) => string
+  duplicateEstimate: (estimateId: string) => string
+  duplicateWorkOrder: (workOrderId: string) => string
+  duplicateInvoice: (invoiceId: string) => string
 
   // Company Profiles (for multiple companies/DBAs)
   companyProfiles: CompanyProfile[]
@@ -589,6 +592,92 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     return get().addInvoice(invoice)
+  },
+
+  duplicateEstimate: (estimateId) => {
+    const state = get()
+    const estimate = state.estimates.find(e => e.id === estimateId)
+    if (!estimate) return ''
+
+    const duplicatedEstimate: Omit<EstimateDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> = {
+      companyId: estimate.companyId,
+      customerId: estimate.customerId,
+      customerName: estimate.customerName,
+      jobId: estimate.jobId,
+      jobName: estimate.jobName,
+      date: Date.now(),
+      expiryDate: estimate.expiryDate ? Date.now() + (estimate.expiryDate - estimate.date) : undefined,
+      status: 'Draft',
+      lineItems: [...estimate.lineItems],
+      subtotal: estimate.subtotal,
+      taxRate: estimate.taxRate,
+      taxAmount: estimate.taxAmount,
+      total: estimate.total,
+      notes: estimate.notes,
+      termsAndConditions: estimate.termsAndConditions,
+      includeTerms: estimate.includeTerms
+    }
+
+    return get().addEstimate(duplicatedEstimate)
+  },
+
+  duplicateWorkOrder: (workOrderId) => {
+    const state = get()
+    const workOrder = state.workOrders.find(wo => wo.id === workOrderId)
+    if (!workOrder) return ''
+
+    const duplicatedWorkOrder: Omit<WorkOrderDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> = {
+      companyId: workOrder.companyId,
+      customerId: workOrder.customerId,
+      customerName: workOrder.customerName,
+      jobId: workOrder.jobId,
+      jobName: workOrder.jobName,
+      estimateId: workOrder.estimateId,
+      date: Date.now(),
+      status: 'Scheduled',
+      assignedTo: workOrder.assignedTo,
+      lineItems: [...workOrder.lineItems],
+      subtotal: workOrder.subtotal,
+      taxRate: workOrder.taxRate,
+      taxAmount: workOrder.taxAmount,
+      total: workOrder.total,
+      notes: workOrder.notes,
+      internalNotes: workOrder.internalNotes
+    }
+
+    return get().addWorkOrder(duplicatedWorkOrder)
+  },
+
+  duplicateInvoice: (invoiceId) => {
+    const state = get()
+    const invoice = state.invoices.find(inv => inv.id === invoiceId)
+    if (!invoice) return ''
+
+    const duplicatedInvoice: Omit<InvoiceDocument, 'id' | 'number' | 'createdAt' | 'updatedAt'> = {
+      companyId: invoice.companyId,
+      customerId: invoice.customerId,
+      customerName: invoice.customerName,
+      jobId: invoice.jobId,
+      jobName: invoice.jobName,
+      estimateId: invoice.estimateId,
+      workOrderId: invoice.workOrderId,
+      date: Date.now(),
+      dueDate: invoice.dueDate ? Date.now() + (invoice.dueDate - invoice.date) : undefined,
+      status: 'Draft',
+      lineItems: [...invoice.lineItems],
+      subtotal: invoice.subtotal,
+      taxRate: invoice.taxRate,
+      taxAmount: invoice.taxAmount,
+      total: invoice.total,
+      amountPaid: 0,
+      balance: invoice.total,
+      paymentTerms: invoice.paymentTerms,
+      notes: invoice.notes,
+      termsAndConditions: invoice.termsAndConditions,
+      includeTerms: invoice.includeTerms
+    }
+
+    return get().addInvoice(duplicatedInvoice)
   },
 
   // Company Profiles

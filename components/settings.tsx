@@ -20,6 +20,7 @@ import {
   Settings as SettingsIcon,
   Shield
 } from 'lucide-react'
+import QuickBooksConnector from './quickbooks-connector'
 
 export default function Settings() {
   const { setCurrentSection, apiKeys, integrations, ownerSettings, setApiKey, setIntegration, setOwnerSetting, loadSettings } = useAppStore()
@@ -177,8 +178,11 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      {/* QuickBooks Integration */}
+      <QuickBooksConnector />
+
       {/* TODO: Update integrations tab with research-based priorities
-          - Phase 1: QuickBooks, Google Calendar, Stripe, Gmail
+          - Phase 1: QuickBooks ✓, Google Calendar, Stripe, Gmail
           - Phase 2: Zapier, Mailchimp, Google Drive
           - Phase 3: Slack, MS Teams, NiceJob, Broadly
       */}

@@ -19,7 +19,10 @@ import {
   AlertCircle,
   Eye,
   ArrowLeft,
-  Download
+  Download,
+  Mail,
+  Copy,
+  Building2
 } from 'lucide-react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { InvoiceDocument, calculateDocumentTotals } from '@/lib/line-items'
@@ -34,13 +37,16 @@ export default function Invoices() {
     addInvoice,
     updateInvoice,
     deleteInvoice,
+    duplicateInvoice,
     getEntitiesByType,
     estimates,
     workOrders,
     companyProfiles,
     currentCompanyId,
     setCurrentSection,
-    saveSettings
+    saveSettings,
+    integrations,
+    setIntegration
   } = useAppStore()
 
   // Get customers and jobs from entities
@@ -152,6 +158,64 @@ export default function Invoices() {
     if (confirm('Are you sure you want to delete this invoice?')) {
       deleteInvoice(id)
       saveSettings()
+    }
+  }
+
+  const handleDuplicate = (invoiceId: string) => {
+    const newId = duplicateInvoice(invoiceId)
+    saveSettings()
+    alert(`Invoice duplicated successfully`)
+  }
+
+  const handleEmail = async (invoice: InvoiceDocument) => {
+    const customerEmail = prompt(`Send invoice ${invoice.number} to:`, invoice.customerName ? `${invoice.customerName.toLowerCase().replace(/\s+/g, '.')}@email.com` : '')
+    if (customerEmail) {
+      alert(`Email feature coming soon. Would send to: ${customerEmail}`)
+    }
+  }
+
+  const handleQuickBooksSync = async (invoice: InvoiceDocument) => {
+    // Check if QuickBooks is connected
+    if (!integrations.quickbooks.enabled || !integrations.quickbooks.accessToken) {
+      if (confirm('QuickBooks is not connected. Would you like to connect now?')) {
+        try {
+          const response = await fetch('/api/quickbooks/auth')
+          const data = await response.json()
+          if (data.authUrl) {
+            window.location.href = data.authUrl
+          }
+        } catch (error) {
+          alert('Failed to initiate QuickBooks connection. Please try again.')
+        }
+      }
+      return
+    }
+
+    const company = companyProfiles.find(p => p.id === (invoice.companyId || currentCompanyId)) ||
+                    companyProfiles.find(p => p.isDefault) ||
+                    companyProfiles[0]
+
+    try {
+      const response = await fetch('/api/quickbooks/sync-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice,
+          company,
+          accessToken: integrations.quickbooks.accessToken,
+          realmId: integrations.quickbooks.realmId
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`Invoice ${invoice.number} synced to QuickBooks successfully!`)
+      } else {
+        alert(`Failed to sync to QuickBooks: ${data.error}`)
+      }
+    } catch (error) {
+      alert('Error syncing to QuickBooks. Please try again.')
     }
   }
 
@@ -405,6 +469,27 @@ export default function Invoices() {
                             </Button>
                           )}
                         </PDFDownloadLink>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEmail(invoice)}
+                        >
+                          <Mail className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleQuickBooksSync(invoice)}
+                        >
+                          <Building2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDuplicate(invoice.id)}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

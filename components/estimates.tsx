@@ -18,7 +18,9 @@ import {
   X,
   Download,
   Copy,
-  ArrowRight
+  ArrowRight,
+  Mail,
+  Building2
 } from 'lucide-react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { useAppStore } from '@/lib/store'
@@ -38,10 +40,13 @@ export default function Estimates() {
     updateEstimate,
     deleteEstimate,
     convertEstimateToWorkOrder,
+    duplicateEstimate,
     companyProfiles,
     currentCompanyId,
     setCurrentSection,
-    saveSettings
+    saveSettings,
+    integrations,
+    setIntegration
   } = useAppStore()
 
   const [view, setView] = useState<'list' | 'create' | 'edit' | 'view'>('list')
@@ -190,6 +195,91 @@ export default function Estimates() {
     updateEstimate(estimateId, { status: 'Approved' })
     saveSettings()
     alert('Work Order created! You can find it in the Work Orders section.')
+  }
+
+  const handleDuplicate = (estimateId: string) => {
+    const newId = duplicateEstimate(estimateId)
+    saveSettings()
+    const newEstimate = estimates.find(e => e.id === newId)
+    if (newEstimate) {
+      alert(`Duplicate created: ${newEstimate.number}`)
+    }
+  }
+
+  const handleEmail = async (estimate: EstimateDocument) => {
+    const company = companyProfiles.find(p => p.id === (estimate.companyId || currentCompanyId)) ||
+                    companyProfiles.find(p => p.isDefault) ||
+                    companyProfiles[0]
+
+    const customerEmail = prompt(`Send estimate ${estimate.number} to:`, estimate.customerName ? `${estimate.customerName.toLowerCase().replace(/\s+/g, '.')}@email.com` : '')
+    if (!customerEmail) return
+
+    try {
+      const response = await fetch('/api/email/send-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estimate,
+          company,
+          recipientEmail: customerEmail
+        })
+      })
+
+      if (response.ok) {
+        updateEstimate(estimate.id, { status: 'Sent' })
+        saveSettings()
+        alert(`Estimate sent to ${customerEmail}`)
+      } else {
+        alert('Failed to send email. Please check your email configuration.')
+      }
+    } catch (error) {
+      alert('Error sending email. Please try again.')
+    }
+  }
+
+  const handleQuickBooksSync = async (estimate: EstimateDocument) => {
+    // Check if QuickBooks is connected
+    if (!integrations.quickbooks.enabled || !integrations.quickbooks.accessToken) {
+      if (confirm('QuickBooks is not connected. Would you like to connect now?')) {
+        try {
+          const response = await fetch('/api/quickbooks/auth')
+          const data = await response.json()
+          if (data.authUrl) {
+            window.location.href = data.authUrl
+          }
+        } catch (error) {
+          alert('Failed to initiate QuickBooks connection. Please try again.')
+        }
+      }
+      return
+    }
+
+    const company = companyProfiles.find(p => p.id === (estimate.companyId || currentCompanyId)) ||
+                    companyProfiles.find(p => p.isDefault) ||
+                    companyProfiles[0]
+
+    try {
+      const response = await fetch('/api/quickbooks/sync-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          estimate,
+          company,
+          accessToken: integrations.quickbooks.accessToken,
+          realmId: integrations.quickbooks.realmId
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`Estimate ${estimate.number} synced to QuickBooks successfully!`)
+      } else {
+        alert(`Failed to sync to QuickBooks: ${data.error}`)
+      }
+    } catch (error) {
+      alert('Error syncing to QuickBooks. Please try again.')
+    }
   }
 
   const handleCustomerChange = (customerId: string) => {
@@ -362,6 +452,30 @@ export default function Estimates() {
                           </Button>
                         )}
                       </PDFDownloadLink>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEmail(estimate)}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleQuickBooksSync(estimate)}
+                      >
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Sync QB
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDuplicate(estimate.id)}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Duplicate
+                      </Button>
                       {estimate.status === 'Approved' && (
                         <Button
                           variant="default"

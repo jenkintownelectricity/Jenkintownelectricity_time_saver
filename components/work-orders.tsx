@@ -16,7 +16,9 @@ import {
   ArrowRight,
   Clock,
   CheckCircle2,
-  Download
+  Download,
+  Mail,
+  Copy
 } from 'lucide-react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { useAppStore } from '@/lib/store'
@@ -36,6 +38,7 @@ export default function WorkOrders() {
     deleteWorkOrder,
     addWorkOrder,
     convertWorkOrderToInvoice,
+    duplicateWorkOrder,
     companyProfiles,
     currentCompanyId,
     setCurrentSection,
@@ -181,6 +184,19 @@ export default function WorkOrders() {
     updateWorkOrder(woId, { status: 'Completed' })
     saveSettings()
     alert('Invoice created! You can find it in the Invoices section.')
+  }
+
+  const handleDuplicate = (woId: string) => {
+    const newId = duplicateWorkOrder(woId)
+    saveSettings()
+    alert(`Work Order duplicated successfully`)
+  }
+
+  const handleEmail = async (wo: WorkOrderDocument) => {
+    const customerEmail = prompt(`Send work order ${wo.number} to:`, wo.customerName ? `${wo.customerName.toLowerCase().replace(/\s+/g, '.')}@email.com` : '')
+    if (customerEmail) {
+      alert(`Email feature coming soon. Would send to: ${customerEmail}`)
+    }
   }
 
   const handleCustomerChange = (customerId: string) => {
@@ -369,6 +385,22 @@ export default function WorkOrders() {
                           </Button>
                         )}
                       </PDFDownloadLink>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEmail(wo)}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDuplicate(wo.id)}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Duplicate
+                      </Button>
                       {wo.status === 'Completed' && (
                         <Button
                           variant="default"
