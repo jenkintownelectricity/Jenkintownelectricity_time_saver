@@ -13,6 +13,7 @@ export interface UserAccount {
   name: string
   email: string
   phone: string
+  jobTitle: string // e.g., "Electrician", "Project Manager", "Owner"
   createdAt: number
 }
 
@@ -133,7 +134,7 @@ interface AppState {
   workCalls: WorkCall[]
   callStats: CallStats
   isOnCall: boolean
-  createAccount: (name: string, email: string, phone: string) => void
+  createAccount: (name: string, email: string, phone: string, jobTitle: string) => void
   createCompany: (name: string) => void
   switchCompany: (code: string) => void
   linkCompany: (code: string) => void
@@ -325,13 +326,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   isOnCall: false,
 
-  createAccount: (name, email, phone) => {
+  createAccount: (name, email, phone, jobTitle) => {
     const memberNumber = generateMemberNumber()
     const account: UserAccount = {
       memberNumber,
       name,
       email,
       phone,
+      jobTitle,
       createdAt: Date.now(),
     }
     set({ userAccount: account })

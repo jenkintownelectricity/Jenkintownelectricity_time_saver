@@ -18,6 +18,8 @@ import {
   Clock,
   Settings,
   Phone,
+  Copy,
+  Building2,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CallType, WorkCall } from '@/lib/store'
@@ -216,9 +218,11 @@ export default function WorkCallBidding() {
 
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="calls">Active Calls ({activeCalls.length})</TabsTrigger>
+            <TabsTrigger value="calls">Calls ({activeCalls.length})</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
+            <TabsTrigger value="network">Network</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -481,6 +485,240 @@ export default function WorkCallBidding() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Billing Tab */}
+          <TabsContent value="billing" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5" />
+                  Billing & Usage
+                </CardTitle>
+                <CardDescription>
+                  Track your call activity and earnings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Monthly Summary */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Current Month Summary</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-4 border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Calls Created</p>
+                      <p className="text-2xl font-bold">{callStats.totalCalls}</p>
+                    </div>
+                    <div className="p-4 border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Calls Claimed</p>
+                      <p className="text-2xl font-bold text-green-500">{callStats.claimedCalls}</p>
+                    </div>
+                    <div className="p-4 border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Calls Expired</p>
+                      <p className="text-2xl font-bold text-red-500">{callStats.expiredCalls}</p>
+                    </div>
+                    <div className="p-4 border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Bonuses Earned</p>
+                      <p className="text-2xl font-bold text-yellow-500">${callStats.totalBonusEarned}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Usage Details */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Usage Details</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                      <div>
+                        <p className="font-medium">Average Response Time</p>
+                        <p className="text-sm text-muted-foreground">How quickly calls are claimed</p>
+                      </div>
+                      <Badge variant="outline">
+                        {callStats.averageResponseTime > 0
+                          ? `${callStats.averageResponseTime.toFixed(1)}s`
+                          : 'N/A'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                      <div>
+                        <p className="font-medium">Success Rate</p>
+                        <p className="text-sm text-muted-foreground">Claimed vs Total calls</p>
+                      </div>
+                      <Badge variant="outline">
+                        {callStats.totalCalls > 0
+                          ? `${((callStats.claimedCalls / callStats.totalCalls) * 100).toFixed(0)}%`
+                          : '0%'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+                      <div>
+                        <p className="font-medium">Active Team Members</p>
+                        <p className="text-sm text-muted-foreground">Currently on-call</p>
+                      </div>
+                      <Badge variant="outline">{isOnCall ? '1' : '0'}</Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Call Type Breakdown */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Call Type Breakdown</h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 border border-red-500/30 bg-red-500/5 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap className="w-4 h-4 text-red-500" />
+                        <p className="text-sm font-medium">Emergency</p>
+                      </div>
+                      <p className="text-2xl font-bold">
+                        {workCalls.filter((c) => c.type === 'emergency').length}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ${currentCompany?.settings.emergencyBonus || 0} each
+                      </p>
+                    </div>
+                    <div className="p-4 border border-yellow-500/30 bg-yellow-500/5 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sun className="w-4 h-4 text-yellow-500" />
+                        <p className="text-sm font-medium">Daytime</p>
+                      </div>
+                      <p className="text-2xl font-bold">
+                        {workCalls.filter((c) => c.type === 'daytime').length}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ${currentCompany?.settings.daytimeBonus || 0} each
+                      </p>
+                    </div>
+                    <div className="p-4 border border-blue-500/30 bg-blue-500/5 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Calendar className="w-4 h-4 text-blue-500" />
+                        <p className="text-sm font-medium">Scheduled</p>
+                      </div>
+                      <p className="text-2xl font-bold">
+                        {workCalls.filter((c) => c.type === 'scheduled').length}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ${currentCompany?.settings.scheduledBonus || 0} each
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Network Marketplace Tab */}
+          <TabsContent value="network" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Company Network
+                </CardTitle>
+                <CardDescription>
+                  Connect with other companies to share overflow work
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Your Network */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Your Linked Companies</h3>
+                  {currentCompany && currentCompany.linkedCompanies.length > 0 ? (
+                    <div className="space-y-2">
+                      {currentCompany.linkedCompanies.map((code) => (
+                        <div
+                          key={code}
+                          className="flex items-center justify-between p-3 border border-border rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Building2 className="w-5 h-5 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{code}</p>
+                              <p className="text-sm text-muted-foreground">Linked company</p>
+                            </div>
+                          </div>
+                          <Badge variant="outline">Connected</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 border border-dashed border-border rounded-lg">
+                      <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground mb-4">
+                        No linked companies yet
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Link companies to share overflow work and build your network
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Network Stats */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Network Overview</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Network Size</p>
+                      <p className="text-2xl font-bold">
+                        {currentCompany?.linkedCompanies.length || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Companies linked</p>
+                    </div>
+                    <div className="p-4 border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Total Members</p>
+                      <p className="text-2xl font-bold">{currentCompany?.members.length || 0}</p>
+                      <p className="text-xs text-muted-foreground mt-1">In your company</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* How It Works */}
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <h3 className="text-sm font-medium mb-2">How the Network Works</h3>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span>
+                        Share your company code with trusted contractors
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span>
+                        When you're overbooked, send calls to your network
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span>
+                        Network members can see and claim calls you share
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span>Build an infinite network of connected companies</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Call to Action */}
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Your company code: <strong>{currentCompany?.code}</strong>
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (currentCompany?.code) {
+                        navigator.clipboard.writeText(currentCompany.code)
+                      }
+                    }}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Company Code to Share
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Settings Tab */}

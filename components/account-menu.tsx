@@ -27,6 +27,7 @@ export default function AccountMenu() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [jobTitle, setJobTitle] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [linkCode, setLinkCode] = useState('')
 
@@ -36,12 +37,13 @@ export default function AccountMenu() {
   const currentCompany = companies.find((c) => c.code === currentCompanyCode)
 
   const handleCreateAccount = () => {
-    if (name && email && phone) {
-      createAccount(name, email, phone)
+    if (name && email && phone && jobTitle) {
+      createAccount(name, email, phone, jobTitle)
       setShowCreateAccount(false)
       setName('')
       setEmail('')
       setPhone('')
+      setJobTitle('')
     }
   }
 
@@ -91,8 +93,8 @@ export default function AccountMenu() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-end p-4 pt-20">
-      <div className="bg-background border border-border rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-end p-0">
+      <div className="bg-background border border-border rounded-lg shadow-xl max-w-md w-full max-h-screen overflow-y-auto mt-16 mr-4">
         {/* Header */}
         <div className="sticky top-0 bg-background border-b border-border p-4">
           <div className="flex items-center justify-between">
@@ -156,6 +158,11 @@ export default function AccountMenu() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
+                <Input
+                  placeholder="Job Title (e.g., Electrician, Owner)"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                />
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
@@ -185,7 +192,9 @@ export default function AccountMenu() {
                   </span>
                   <Badge variant="outline">{userAccount.memberNumber}</Badge>
                 </CardTitle>
-                <CardDescription>{userAccount.email}</CardDescription>
+                <CardDescription>
+                  {userAccount.jobTitle} • {userAccount.email}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button
