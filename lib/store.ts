@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { EntityType, EntityInstance, DEFAULT_ENTITIES, ContactAddress, LinkedContact } from './entities'
+import { TaxDocument, TaxPackage, getQuarterFromDate } from './tax-documents'
+import { EstimateDocument, WorkOrderDocument, InvoiceDocument, calculateDocumentTotals } from './line-items'
 
-export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors'
+export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices'
 
 export interface VoiceCallState {
   isActive: boolean
@@ -60,6 +62,36 @@ interface AppState {
   getEntity: (id: string) => EntityInstance | undefined
   getEntitiesByType: (entityTypeId: string) => EntityInstance[]
   setCurrentEntityView: (entityTypeId: string | null, entityId?: string | null) => void
+
+  // Tax Documents
+  taxDocuments: TaxDocument[]
+  taxPackages: TaxPackage[]
+  addTaxDocument: (document: Omit<TaxDocument, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updateTaxDocument: (id: string, updates: Partial<TaxDocument>) => void
+  deleteTaxDocument: (id: string) => void
+  getTaxDocumentsByYear: (year: number) => TaxDocument[]
+  getTaxDocumentsByQuarter: (year: number, quarter: string) => TaxDocument[]
+  createTaxPackage: (year: number, quarter?: string, type?: 'quarterly' | 'annual') => string
+  markPackageSubmitted: (packageId: string, accountantEmail?: string) => void
+
+  // Estimates, Work Orders, Invoices
+  estimates: EstimateDocument[]
+  workOrders: WorkOrderDocument[]
+  invoices: InvoiceDocument[]
+  addEstimate: (estimate: Omit<EstimateDocument, 'id' | 'createdAt' | 'updatedAt'>) => string
+  updateEstimate: (id: string, updates: Partial<EstimateDocument>) => void
+  deleteEstimate: (id: string) => void
+  getEstimate: (id: string) => EstimateDocument | undefined
+  addWorkOrder: (workOrder: Omit<WorkOrderDocument, 'id' | 'createdAt' | 'updatedAt'>) => string
+  updateWorkOrder: (id: string, updates: Partial<WorkOrderDocument>) => void
+  deleteWorkOrder: (id: string) => void
+  getWorkOrder: (id: string) => WorkOrderDocument | undefined
+  addInvoice: (invoice: Omit<InvoiceDocument, 'id' | 'createdAt' | 'updatedAt'>) => string
+  updateInvoice: (id: string, updates: Partial<InvoiceDocument>) => void
+  deleteInvoice: (id: string) => void
+  getInvoice: (id: string) => InvoiceDocument | undefined
+  convertEstimateToWorkOrder: (estimateId: string) => string
+  convertWorkOrderToInvoice: (workOrderId: string) => string
 
   // API Keys & Settings
   apiKeys: {
@@ -214,6 +246,228 @@ export const useAppStore = create<AppState>((set, get) => ({
     currentEntityId: entityId
   }),
 
+  // Tax Documents
+  taxDocuments: [],
+  taxPackages: [],
+  addTaxDocument: (document) => set((state) => {
+    const now = Date.now()
+    const newDoc: TaxDocument = {
+      ...document,
+      id: `tax_${now}`,
+      createdAt: now,
+      updatedAt: now,
+      year: new Date(document.date).getFullYear(),
+      quarter: getQuarterFromDate(document.date)
+    }
+    return { taxDocuments: [...state.taxDocuments, newDoc] }
+  }),
+  updateTaxDocument: (id, updates) => set((state) => ({
+    taxDocuments: state.taxDocuments.map(doc =>
+      doc.id === id
+        ? { ...doc, ...updates, updatedAt: Date.now() }
+        : doc
+    )
+  })),
+  deleteTaxDocument: (id) => set((state) => ({
+    taxDocuments: state.taxDocuments.filter(doc => doc.id !== id)
+  })),
+  getTaxDocumentsByYear: (year) => {
+    const state = get()
+    return state.taxDocuments.filter(doc => doc.year === year)
+  },
+  getTaxDocumentsByQuarter: (year, quarter) => {
+    const state = get()
+    return state.taxDocuments.filter(doc => doc.year === year && doc.quarter === quarter)
+  },
+  createTaxPackage: (year, quarter?, type = 'annual') => {
+    const state = get()
+    let documents: string[]
+
+    if (quarter && type === 'quarterly') {
+      documents = state.taxDocuments
+        .filter(doc => doc.year === year && doc.quarter === quarter)
+        .map(doc => doc.id)
+    } else {
+      documents = state.taxDocuments
+        .filter(doc => doc.year === year)
+        .map(doc => doc.id)
+    }
+
+    const newPackage: TaxPackage = {
+      id: `package_${Date.now()}`,
+      year,
+      quarter: quarter as any,
+      type,
+      documents,
+      generatedAt: Date.now()
+    }
+
+    set((state) => ({
+      taxPackages: [...state.taxPackages, newPackage]
+    }))
+
+    return newPackage.id
+  },
+  markPackageSubmitted: (packageId, accountantEmail?) => set((state) => ({
+    taxPackages: state.taxPackages.map(pkg =>
+      pkg.id === packageId
+        ? { ...pkg, submittedAt: Date.now(), accountantEmail }
+        : pkg
+    )
+  })),
+
+  // Estimates, Work Orders, Invoices
+  estimates: [],
+  workOrders: [],
+  invoices: [],
+
+  addEstimate: (estimate) => {
+    const now = Date.now()
+    const newEstimate: EstimateDocument = {
+      ...estimate,
+      id: `est_${now}`,
+      createdAt: now,
+      updatedAt: now
+    }
+    set((state) => ({
+      estimates: [...state.estimates, newEstimate]
+    }))
+    return newEstimate.id
+  },
+
+  updateEstimate: (id, updates) => set((state) => ({
+    estimates: state.estimates.map(est =>
+      est.id === id
+        ? { ...est, ...updates, updatedAt: Date.now() }
+        : est
+    )
+  })),
+
+  deleteEstimate: (id) => set((state) => ({
+    estimates: state.estimates.filter(est => est.id !== id)
+  })),
+
+  getEstimate: (id) => {
+    const state = get()
+    return state.estimates.find(est => est.id === id)
+  },
+
+  addWorkOrder: (workOrder) => {
+    const now = Date.now()
+    const newWorkOrder: WorkOrderDocument = {
+      ...workOrder,
+      id: `wo_${now}`,
+      createdAt: now,
+      updatedAt: now
+    }
+    set((state) => ({
+      workOrders: [...state.workOrders, newWorkOrder]
+    }))
+    return newWorkOrder.id
+  },
+
+  updateWorkOrder: (id, updates) => set((state) => ({
+    workOrders: state.workOrders.map(wo =>
+      wo.id === id
+        ? { ...wo, ...updates, updatedAt: Date.now() }
+        : wo
+    )
+  })),
+
+  deleteWorkOrder: (id) => set((state) => ({
+    workOrders: state.workOrders.filter(wo => wo.id !== id)
+  })),
+
+  getWorkOrder: (id) => {
+    const state = get()
+    return state.workOrders.find(wo => wo.id === id)
+  },
+
+  addInvoice: (invoice) => {
+    const now = Date.now()
+    const newInvoice: InvoiceDocument = {
+      ...invoice,
+      id: `inv_${now}`,
+      createdAt: now,
+      updatedAt: now
+    }
+    set((state) => ({
+      invoices: [...state.invoices, newInvoice]
+    }))
+    return newInvoice.id
+  },
+
+  updateInvoice: (id, updates) => set((state) => ({
+    invoices: state.invoices.map(inv =>
+      inv.id === id
+        ? { ...inv, ...updates, updatedAt: Date.now() }
+        : inv
+    )
+  })),
+
+  deleteInvoice: (id) => set((state) => ({
+    invoices: state.invoices.filter(inv => inv.id !== id)
+  })),
+
+  getInvoice: (id) => {
+    const state = get()
+    return state.invoices.find(inv => inv.id === id)
+  },
+
+  convertEstimateToWorkOrder: (estimateId) => {
+    const state = get()
+    const estimate = state.estimates.find(e => e.id === estimateId)
+    if (!estimate) return ''
+
+    const now = Date.now()
+    const workOrder: Omit<WorkOrderDocument, 'id' | 'createdAt' | 'updatedAt'> = {
+      number: `WO-${now}`,
+      customerId: estimate.customerId,
+      customerName: estimate.customerName,
+      jobId: estimate.jobId,
+      jobName: estimate.jobName,
+      estimateId: estimate.id,
+      date: now,
+      status: 'Scheduled',
+      lineItems: [...estimate.lineItems],
+      subtotal: estimate.subtotal,
+      taxRate: estimate.taxRate,
+      taxAmount: estimate.taxAmount,
+      total: estimate.total
+    }
+
+    return get().addWorkOrder(workOrder)
+  },
+
+  convertWorkOrderToInvoice: (workOrderId) => {
+    const state = get()
+    const workOrder = state.workOrders.find(wo => wo.id === workOrderId)
+    if (!workOrder) return ''
+
+    const now = Date.now()
+    const invoice: Omit<InvoiceDocument, 'id' | 'createdAt' | 'updatedAt'> = {
+      number: `INV-${now}`,
+      customerId: workOrder.customerId,
+      customerName: workOrder.customerName,
+      jobId: workOrder.jobId,
+      jobName: workOrder.jobName,
+      estimateId: workOrder.estimateId,
+      workOrderId: workOrder.id,
+      date: now,
+      status: 'Draft',
+      lineItems: [...workOrder.lineItems],
+      subtotal: workOrder.subtotal,
+      taxRate: workOrder.taxRate,
+      taxAmount: workOrder.taxAmount,
+      total: workOrder.total,
+      amountPaid: 0,
+      balance: workOrder.total,
+      includeTerms: true
+    }
+
+    return get().addInvoice(invoice)
+  },
+
   // API Keys & Settings
   apiKeys: {
     vapi: null,
@@ -288,13 +542,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes } = parsed
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices } = parsed
           set({
             apiKeys,
             integrations,
             ...(ownerSettings && { ownerSettings }),
             ...(entities && { entities }),
-            ...(entityTypes && { entityTypes })
+            ...(entityTypes && { entityTypes }),
+            ...(taxDocuments && { taxDocuments }),
+            ...(taxPackages && { taxPackages }),
+            ...(estimates && { estimates }),
+            ...(workOrders && { workOrders }),
+            ...(invoices && { invoices })
           })
         } catch (e) {
           console.error('Failed to load settings:', e)
@@ -304,8 +563,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices }))
     }
   },
 }))
