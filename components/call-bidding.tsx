@@ -29,6 +29,7 @@ export default function CallBidding() {
     userProfile,
     currentCompanyCode,
     companyAccounts,
+    ownerSettings,
     addIncomingCall,
     claimCall,
     bidOnCall,
@@ -36,7 +37,9 @@ export default function CallBidding() {
     rejectBid,
     cancelCall,
     getActiveCallsForCompany,
-    getAvailableBidders
+    getAvailableBidders,
+    calculateCallClaimFee,
+    calculateBonusPoolFee
   } = useAppStore()
 
   const [showSimulateCall, setShowSimulateCall] = useState(false)
@@ -76,11 +79,26 @@ export default function CallBidding() {
     })
   }
 
-  const handleClaimCall = (callId: string) => {
+  const handleClaimCall = (callId: string, callType: 'emergency' | 'daytime' | 'scheduled', bonusAmount: number) => {
     if (!userProfile) {
       alert('Please create your profile first')
       return
     }
+
+    // Calculate fees if monetization is enabled
+    const transactionFee = calculateCallClaimFee(callType)
+    const bonusPoolFee = calculateBonusPoolFee(bonusAmount)
+    const netBonus = bonusAmount - transactionFee
+
+    // Show confirmation with fee breakdown if fees are enabled
+    if (transactionFee > 0 || bonusPoolFee > 0) {
+      const message = `Claim this call?\n\nBonus: $${bonusAmount.toFixed(2)}\nTransaction Fee: -$${transactionFee.toFixed(2)}\nNet Bonus: $${netBonus.toFixed(2)}\n\n${bonusPoolFee > 0 ? `(Company charged $${bonusPoolFee.toFixed(2)} platform fee)` : ''}`
+
+      if (!confirm(message)) {
+        return
+      }
+    }
+
     claimCall(callId, userProfile.memberNumber)
   }
 
@@ -240,6 +258,11 @@ export default function CallBidding() {
                             <Badge variant="outline" className="flex items-center gap-1">
                               <DollarSign className="w-3 h-3" />
                               ${call.callBonus} bonus
+                              {calculateCallClaimFee(call.callType) > 0 && (
+                                <span className="ml-1 text-xs opacity-60">
+                                  (-${calculateCallClaimFee(call.callType)})
+                                </span>
+                              )}
                             </Badge>
                           </div>
                           <CardDescription className="space-y-1">
@@ -247,6 +270,13 @@ export default function CallBidding() {
                               <MapPin className="w-4 h-4" />
                               {call.location}
                             </div>
+                            {ownerSettings.monetization.enabled && ownerSettings.monetization.callBidding.enabled && (
+                              <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted/30 rounded">
+                                Transaction fee: ${calculateCallClaimFee(call.callType).toFixed(2)} •
+                                Platform fee: ${calculateBonusPoolFee(call.callBonus).toFixed(2)} •
+                                Net bonus: ${(call.callBonus - calculateCallClaimFee(call.callType)).toFixed(2)}
+                              </div>
+                            )}
                             <div className="flex items-center gap-2">
                               <Phone className="w-4 h-4" />
                               {call.customerPhone}
@@ -317,12 +347,17 @@ export default function CallBidding() {
                         </div>
                       ) : (
                         <Button
-                          onClick={() => handleClaimCall(call.id)}
+                          onClick={() => handleClaimCall(call.id, call.callType, call.callBonus)}
                           className="w-full"
                           size="lg"
                         >
                           <Zap className="w-5 h-5 mr-2" />
                           Claim This Call
+                          {calculateCallClaimFee(call.callType) > 0 && (
+                            <span className="ml-2 text-xs opacity-75">
+                              (${(call.callBonus - calculateCallClaimFee(call.callType)).toFixed(2)} net)
+                            </span>
+                          )}
                         </Button>
                       )}
                     </CardContent>

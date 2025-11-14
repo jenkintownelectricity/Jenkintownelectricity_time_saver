@@ -19,6 +19,8 @@ import Invoices from '@/components/invoices'
 import OnCallIndicator from '@/components/on-call-indicator'
 import AccountMenu from '@/components/account-menu'
 import CallBidding from '@/components/call-bidding'
+import BillingDashboard from '@/components/billing-dashboard'
+import NetworkMarketplace from '@/components/network-marketplace'
 import { useEffect } from 'react'
 
 export default function Home() {
@@ -74,6 +76,14 @@ export default function Home() {
 
   if (currentSection === 'call-bidding') {
     return <CallBidding />
+  }
+
+  if (currentSection === 'billing') {
+    return <BillingDashboard />
+  }
+
+  if (currentSection === 'network-marketplace') {
+    return <NetworkMarketplace />
   }
 
   return (
@@ -261,6 +271,56 @@ export default function Home() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Claim incoming work calls, earn bonuses, and manage team availability
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Billing Dashboard Card */}
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-green-500/50 border-2 border-green-500/20 bg-green-500/5"
+              onClick={() => setCurrentSection('billing')}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                    <DollarSign className="w-6 h-6 text-green-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Billing</CardTitle>
+                    <CardDescription className="text-green-600 dark:text-green-400">
+                      Usage & invoices
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Track your usage, fees, and billing history
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Network Marketplace Card */}
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-blue-500/50 border-2 border-blue-500/20 bg-blue-500/5"
+              onClick={() => setCurrentSection('network-marketplace')}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-blue-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Network Marketplace</CardTitle>
+                    <CardDescription className="text-blue-600 dark:text-blue-400">
+                      Share work with partners
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Join networks and share overflow calls with other contractors
                 </p>
               </CardContent>
             </Card>

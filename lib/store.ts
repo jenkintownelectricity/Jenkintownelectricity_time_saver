@@ -4,7 +4,7 @@ import { TaxDocument, TaxPackage, getQuarterFromDate } from './tax-documents'
 import { EstimateDocument, WorkOrderDocument, InvoiceDocument, calculateDocumentTotals } from './line-items'
 import { CompanyProfile, createDefaultCompanyProfile, generateDocumentNumber, incrementDocumentCounter } from './company-profiles'
 
-export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices' | 'call-bidding'
+export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices' | 'call-bidding' | 'billing' | 'network-marketplace'
 
 export interface VoiceCallState {
   isActive: boolean
@@ -130,6 +130,87 @@ export interface CallBid {
   status: 'pending' | 'accepted' | 'rejected'
 }
 
+// Billing & Payment Tracking
+export interface BillingEvent {
+  id: string
+  companyCode: string
+  memberNumber?: string // Who triggered the event
+  type: 'call_claim_fee' | 'bonus_pool_fee' | 'subscription_charge' | 'api_usage' | 'lead_fee' | 'network_access_fee' | 'refund'
+  amount: number
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded'
+  description: string
+  metadata: {
+    callId?: string
+    callType?: string
+    bonusAmount?: number
+    invoiceId?: string
+    [key: string]: any
+  }
+  stripePaymentIntentId?: string
+  createdAt: number
+  processedAt?: number
+}
+
+export interface PaymentMethod {
+  id: string
+  companyCode: string
+  stripePaymentMethodId: string
+  type: 'card' | 'bank_account'
+  last4: string
+  brand?: string // For cards (Visa, Mastercard, etc.)
+  isDefault: boolean
+  createdAt: number
+}
+
+export interface BillingInvoice {
+  id: string
+  invoiceNumber: string
+  companyCode: string
+  billingPeriodStart: number
+  billingPeriodEnd: number
+  items: {
+    type: string
+    description: string
+    quantity: number
+    unitPrice: number
+    total: number
+  }[]
+  subtotal: number
+  fees: number
+  tax: number
+  total: number
+  status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible'
+  dueDate: number
+  paidAt?: number
+  stripeInvoiceId?: string
+  createdAt: number
+}
+
+export interface NetworkMarketplace {
+  id: string
+  name: string
+  description: string
+  memberCompanies: string[] // Array of company codes
+  serviceArea: {
+    cities: string[]
+    radius: number // Miles from center
+    centerLat?: number
+    centerLng?: number
+  }
+  settings: {
+    allowAutoAccept: boolean
+    requireVerification: boolean
+    minimumRating: number
+    monthlyFee: number
+  }
+  stats: {
+    totalCalls: number
+    totalValue: number
+    avgResponseTime: number
+  }
+  createdAt: number
+}
+
 interface AppState {
   // Navigation
   currentSection: AppSection
@@ -188,6 +269,29 @@ interface AppState {
   cancelCall: (callId: string) => void
   getActiveCallsForCompany: (companyCode: string) => IncomingCall[]
   getAvailableBidders: () => TeamMember[] // Members currently on-call and available
+
+  // Billing & Payment System
+  billingEvents: BillingEvent[]
+  paymentMethods: PaymentMethod[]
+  billingInvoices: BillingInvoice[]
+  addBillingEvent: (event: Omit<BillingEvent, 'id' | 'createdAt' | 'status'>) => string
+  updateBillingEvent: (id: string, updates: Partial<BillingEvent>) => void
+  getBillingEventsForCompany: (companyCode: string, startDate?: number, endDate?: number) => BillingEvent[]
+  getCompanyBalance: (companyCode: string) => number
+  addPaymentMethod: (method: Omit<PaymentMethod, 'id' | 'createdAt'>) => string
+  removePaymentMethod: (id: string) => void
+  setDefaultPaymentMethod: (id: string) => void
+  generateBillingInvoice: (companyCode: string, startDate: number, endDate: number) => string
+  markBillingInvoicePaid: (invoiceId: string) => void
+  processPayment: (eventId: string, paymentMethodId: string) => Promise<boolean>
+
+  // Network Marketplace
+  networkMarketplaces: NetworkMarketplace[]
+  createMarketplace: (marketplace: Omit<NetworkMarketplace, 'id' | 'createdAt' | 'stats'>) => string
+  joinMarketplace: (marketplaceId: string, companyCode: string) => void
+  leaveMarketplace: (marketplaceId: string, companyCode: string) => void
+  shareCallToNetwork: (callId: string, marketplaceId: string) => void
+  getMarketplacesForCompany: (companyCode: string) => NetworkMarketplace[]
 
   // Entity Management System
   entityTypes: { [key: string]: EntityType }
@@ -624,13 +728,56 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   claimCall: (callId, memberNumber) => {
+    const call = get().incomingCalls.find(c => c.id === callId)
+    if (!call) return
+
+    // Update call status
     set((state) => ({
-      incomingCalls: state.incomingCalls.map(call =>
-        call.id === callId
-          ? { ...call, status: 'claimed', claimedBy: memberNumber, claimedAt: Date.now() }
-          : call
+      incomingCalls: state.incomingCalls.map(c =>
+        c.id === callId
+          ? { ...c, status: 'claimed', claimedBy: memberNumber, claimedAt: Date.now() }
+          : c
       )
     }))
+
+    // Calculate and record fees if monetization enabled
+    const { ownerSettings } = get()
+    if (ownerSettings.monetization.enabled && ownerSettings.monetization.callBidding.enabled) {
+      // Transaction fee
+      const transactionFee = get().calculateCallClaimFee(call.callType)
+      if (transactionFee > 0) {
+        get().addBillingEvent({
+          companyCode: call.companyCode,
+          memberNumber,
+          type: 'call_claim_fee',
+          amount: transactionFee,
+          description: `${call.callType.charAt(0).toUpperCase() + call.callType.slice(1)} call claim fee`,
+          metadata: {
+            callId,
+            callType: call.callType,
+            customerName: call.customerName,
+            location: call.location
+          }
+        })
+      }
+
+      // Bonus pool fee (charged to company posting the call)
+      const bonusPoolFee = get().calculateBonusPoolFee(call.callBonus)
+      if (bonusPoolFee > 0) {
+        get().addBillingEvent({
+          companyCode: call.companyCode,
+          type: 'bonus_pool_fee',
+          amount: bonusPoolFee,
+          description: `Platform fee on $${call.callBonus.toFixed(2)} bonus`,
+          metadata: {
+            callId,
+            bonusAmount: call.callBonus,
+            feePercentage: ownerSettings.monetization.callBidding.bonusPoolFee
+          }
+        })
+      }
+    }
+
     get().saveSettings()
   },
 
@@ -692,6 +839,284 @@ export const useAppStore = create<AppState>((set, get) => ({
   getAvailableBidders: () => {
     const state = get()
     return state.teamMembers.filter(m => m.onCallAvailable)
+  },
+
+  // Billing & Payment System
+  billingEvents: [],
+  paymentMethods: [],
+  billingInvoices: [],
+
+  addBillingEvent: (event) => {
+    const newEvent: BillingEvent = {
+      ...event,
+      id: `billing_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      status: 'pending',
+      createdAt: Date.now()
+    }
+    set((state) => ({
+      billingEvents: [...state.billingEvents, newEvent]
+    }))
+    get().saveSettings()
+    return newEvent.id
+  },
+
+  updateBillingEvent: (id, updates) => {
+    set((state) => ({
+      billingEvents: state.billingEvents.map(event =>
+        event.id === id ? { ...event, ...updates } : event
+      )
+    }))
+    get().saveSettings()
+  },
+
+  getBillingEventsForCompany: (companyCode, startDate, endDate) => {
+    const { billingEvents } = get()
+    return billingEvents.filter(event => {
+      const matchesCompany = event.companyCode === companyCode
+      const afterStart = !startDate || event.createdAt >= startDate
+      const beforeEnd = !endDate || event.createdAt <= endDate
+      return matchesCompany && afterStart && beforeEnd
+    })
+  },
+
+  getCompanyBalance: (companyCode) => {
+    const events = get().getBillingEventsForCompany(companyCode)
+    return events
+      .filter(e => e.status === 'pending' || e.status === 'processing')
+      .reduce((sum, e) => sum + e.amount, 0)
+  },
+
+  addPaymentMethod: (method) => {
+    const newMethod: PaymentMethod = {
+      ...method,
+      id: `pm_${Date.now()}`,
+      createdAt: Date.now()
+    }
+    set((state) => ({
+      paymentMethods: [...state.paymentMethods, newMethod]
+    }))
+    get().saveSettings()
+    return newMethod.id
+  },
+
+  removePaymentMethod: (id) => {
+    set((state) => ({
+      paymentMethods: state.paymentMethods.filter(pm => pm.id !== id)
+    }))
+    get().saveSettings()
+  },
+
+  setDefaultPaymentMethod: (id) => {
+    set((state) => ({
+      paymentMethods: state.paymentMethods.map(pm => ({
+        ...pm,
+        isDefault: pm.id === id
+      }))
+    }))
+    get().saveSettings()
+  },
+
+  generateBillingInvoice: (companyCode, startDate, endDate) => {
+    const events = get().getBillingEventsForCompany(companyCode, startDate, endDate)
+    const company = get().companyAccounts.find(c => c.companyCode === companyCode)
+
+    // Group events by type for invoice line items
+    const itemsMap = new Map<string, { quantity: number, total: number }>()
+
+    events.forEach(event => {
+      const existing = itemsMap.get(event.type) || { quantity: 0, total: 0 }
+      itemsMap.set(event.type, {
+        quantity: existing.quantity + 1,
+        total: existing.total + event.amount
+      })
+    })
+
+    const items = Array.from(itemsMap.entries()).map(([type, data]) => ({
+      type,
+      description: type.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      quantity: data.quantity,
+      unitPrice: data.total / data.quantity,
+      total: data.total
+    }))
+
+    const subtotal = items.reduce((sum, item) => sum + item.total, 0)
+    const fees = 0 // Could add processing fees here
+    const tax = 0 // Calculate tax based on company location
+
+    const invoiceNumber = `BILL-${Date.now()}`
+
+    const invoice: BillingInvoice = {
+      id: `billing_invoice_${Date.now()}`,
+      invoiceNumber,
+      companyCode,
+      billingPeriodStart: startDate,
+      billingPeriodEnd: endDate,
+      items,
+      subtotal,
+      fees,
+      tax,
+      total: subtotal + fees + tax,
+      status: 'open',
+      dueDate: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now
+      createdAt: Date.now()
+    }
+
+    set((state) => ({
+      billingInvoices: [...state.billingInvoices, invoice]
+    }))
+    get().saveSettings()
+    return invoice.id
+  },
+
+  markBillingInvoicePaid: (invoiceId) => {
+    const invoice = get().billingInvoices.find(inv => inv.id === invoiceId)
+    if (!invoice) return
+
+    // Mark invoice as paid
+    set((state) => ({
+      billingInvoices: state.billingInvoices.map(inv =>
+        inv.id === invoiceId
+          ? { ...inv, status: 'paid', paidAt: Date.now() }
+          : inv
+      )
+    }))
+
+    // Mark all related billing events as completed
+    const startDate = invoice.billingPeriodStart
+    const endDate = invoice.billingPeriodEnd
+    const events = get().getBillingEventsForCompany(invoice.companyCode, startDate, endDate)
+
+    events.forEach(event => {
+      if (event.status === 'pending' || event.status === 'processing') {
+        get().updateBillingEvent(event.id, {
+          status: 'completed',
+          processedAt: Date.now(),
+          metadata: { ...event.metadata, invoiceId }
+        })
+      }
+    })
+
+    get().saveSettings()
+  },
+
+  processPayment: async (eventId, paymentMethodId) => {
+    const event = get().billingEvents.find(e => e.id === eventId)
+    const paymentMethod = get().paymentMethods.find(pm => pm.id === paymentMethodId)
+
+    if (!event || !paymentMethod) {
+      return false
+    }
+
+    // Update event status to processing
+    get().updateBillingEvent(eventId, { status: 'processing' })
+
+    try {
+      // TODO: Integrate with Stripe API
+      // For now, simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Mark as completed
+      get().updateBillingEvent(eventId, {
+        status: 'completed',
+        processedAt: Date.now()
+      })
+
+      return true
+    } catch (error) {
+      // Mark as failed
+      get().updateBillingEvent(eventId, { status: 'failed' })
+      return false
+    }
+  },
+
+  // Network Marketplace
+  networkMarketplaces: [],
+
+  createMarketplace: (marketplace) => {
+    const newMarketplace: NetworkMarketplace = {
+      ...marketplace,
+      id: `marketplace_${Date.now()}`,
+      stats: {
+        totalCalls: 0,
+        totalValue: 0,
+        avgResponseTime: 0
+      },
+      createdAt: Date.now()
+    }
+    set((state) => ({
+      networkMarketplaces: [...state.networkMarketplaces, newMarketplace]
+    }))
+    get().saveSettings()
+    return newMarketplace.id
+  },
+
+  joinMarketplace: (marketplaceId, companyCode) => {
+    set((state) => ({
+      networkMarketplaces: state.networkMarketplaces.map(mp =>
+        mp.id === marketplaceId && !mp.memberCompanies.includes(companyCode)
+          ? { ...mp, memberCompanies: [...mp.memberCompanies, companyCode] }
+          : mp
+      )
+    }))
+    get().saveSettings()
+  },
+
+  leaveMarketplace: (marketplaceId, companyCode) => {
+    set((state) => ({
+      networkMarketplaces: state.networkMarketplaces.map(mp =>
+        mp.id === marketplaceId
+          ? { ...mp, memberCompanies: mp.memberCompanies.filter(cc => cc !== companyCode) }
+          : mp
+      )
+    }))
+    get().saveSettings()
+  },
+
+  shareCallToNetwork: (callId, marketplaceId) => {
+    const call = get().incomingCalls.find(c => c.id === callId)
+    const marketplace = get().networkMarketplaces.find(mp => mp.id === marketplaceId)
+
+    if (!call || !marketplace) return
+
+    // Update marketplace stats
+    set((state) => ({
+      networkMarketplaces: state.networkMarketplaces.map(mp =>
+        mp.id === marketplaceId
+          ? {
+              ...mp,
+              stats: {
+                ...mp.stats,
+                totalCalls: mp.stats.totalCalls + 1,
+                totalValue: mp.stats.totalValue + call.estimatedValue
+              }
+            }
+          : mp
+      )
+    }))
+
+    // Charge network access fee if monetization enabled
+    const { ownerSettings } = get()
+    if (ownerSettings.monetization.enabled && ownerSettings.monetization.callBidding.enabled) {
+      const networkFee = marketplace.settings.monthlyFee / 30 // Daily rate
+      get().addBillingEvent({
+        companyCode: call.companyCode,
+        type: 'network_access_fee',
+        amount: networkFee,
+        description: `Network marketplace access for call sharing`,
+        metadata: {
+          callId,
+          marketplaceId,
+          marketplaceName: marketplace.name
+        }
+      })
+    }
+
+    get().saveSettings()
+  },
+
+  getMarketplacesForCompany: (companyCode) => {
+    const { networkMarketplaces } = get()
+    return networkMarketplaces.filter(mp => mp.memberCompanies.includes(companyCode))
   },
 
   // Entity Management System
@@ -1504,7 +1929,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids } = parsed
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids, billingEvents, paymentMethods, billingInvoices, networkMarketplaces } = parsed
           set({
             apiKeys,
             integrations,
@@ -1524,7 +1949,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...(companyAccounts && { companyAccounts }),
             ...(currentCompanyCode && { currentCompanyCode }),
             ...(incomingCalls && { incomingCalls }),
-            ...(callBids && { callBids })
+            ...(callBids && { callBids }),
+            ...(billingEvents && { billingEvents }),
+            ...(paymentMethods && { paymentMethods }),
+            ...(billingInvoices && { billingInvoices }),
+            ...(networkMarketplaces && { networkMarketplaces })
           })
         } catch (e) {
           console.error('Failed to load settings:', e)
@@ -1534,8 +1963,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids, billingEvents, paymentMethods, billingInvoices, networkMarketplaces } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids, billingEvents, paymentMethods, billingInvoices, networkMarketplaces }))
     }
   },
 }))
