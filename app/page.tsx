@@ -3,7 +3,7 @@
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Camera, Mic, BookOpen, Briefcase, Zap, DollarSign, Star, QrCode } from 'lucide-react'
+import { Camera, Mic, BookOpen, Briefcase, Zap, DollarSign, Star, QrCode, UserCheck } from 'lucide-react'
 import VoiceInterface from '@/components/voice-interface'
 import PhotoAnalysis from '@/components/photo-analysis'
 import NECLookup from '@/components/nec-lookup'
@@ -11,6 +11,7 @@ import JobsBusiness from '@/components/jobs-business'
 import Settings from '@/components/settings'
 import GetPaidNow from '@/components/get-paid-now'
 import GetReviewsNow from '@/components/get-reviews-now'
+import MyContractors from '@/components/my-contractors'
 import { useEffect } from 'react'
 
 export default function Home() {
@@ -46,6 +47,10 @@ export default function Home() {
 
   if (currentSection === 'get-reviews') {
     return <GetReviewsNow />
+  }
+
+  if (currentSection === 'my-contractors') {
+    return <MyContractors />
   }
 
   return (
@@ -191,6 +196,29 @@ export default function Home() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Track jobs, customers, invoices, and subcontractors
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* My Contractors Card */}
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-primary/50"
+              onClick={() => setCurrentSection('my-contractors')}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UserCheck className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">My Contractors</CardTitle>
+                    <CardDescription>Subcontracting work</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Manage contractors I work for as a subcontractor
                 </p>
               </CardContent>
             </Card>
