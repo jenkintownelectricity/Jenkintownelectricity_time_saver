@@ -4,7 +4,7 @@ import { TaxDocument, TaxPackage, getQuarterFromDate } from './tax-documents'
 import { EstimateDocument, WorkOrderDocument, InvoiceDocument, calculateDocumentTotals } from './line-items'
 import { CompanyProfile, createDefaultCompanyProfile, generateDocumentNumber, incrementDocumentCounter } from './company-profiles'
 
-export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices'
+export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices' | 'call-bidding'
 
 export interface VoiceCallState {
   isActive: boolean
@@ -43,6 +43,70 @@ export interface TeamMember {
   onCallAvailable: boolean
   notes?: string
   createdAt: number
+  memberNumber?: string // Unique member identifier
+  linkedToAccount?: boolean // Whether this member has their own app account
+}
+
+export interface UserProfile {
+  id: string
+  memberNumber: string // Unique 8-digit member number
+  name: string
+  email: string
+  phone: string
+  photoUrl?: string
+  linkedCompanies: string[] // Array of company codes this user is linked to
+  primaryCompanyCode?: string // Main company
+  createdAt: number
+  updatedAt: number
+}
+
+export interface CompanyAccount {
+  id: string
+  companyCode: string // Unique 6-character company code (e.g., "ELX-A3B")
+  companyName: string
+  businessType: string
+  address: string
+  phone: string
+  email: string
+  ownerMemberNumber: string // Member number of the owner
+  members: string[] // Array of member numbers
+  connectedCompanies: string[] // Array of company codes connected for work sharing
+  settings: {
+    allowExternalBidding: boolean
+    requireBidApproval: boolean
+    defaultCallBonus: number
+    daytimeCallBonus: number
+    emergencyCallBonus: number
+  }
+  createdAt: number
+  updatedAt: number
+}
+
+export interface IncomingCall {
+  id: string
+  callType: 'emergency' | 'daytime' | 'scheduled'
+  customerName: string
+  customerPhone: string
+  location: string
+  description: string
+  estimatedValue: number
+  callBonus: number
+  receivedAt: number
+  expiresAt: number
+  status: 'open' | 'claimed' | 'expired' | 'cancelled'
+  companyCode: string // Which company received the call
+  claimedBy?: string // Member number of who claimed it
+  claimedAt?: number
+}
+
+export interface CallBid {
+  id: string
+  callId: string
+  memberNumber: string
+  memberName: string
+  bidTime: number
+  estimatedArrival: number // Minutes until arrival
+  status: 'pending' | 'accepted' | 'rejected'
 }
 
 interface AppState {
@@ -77,6 +141,32 @@ interface AppState {
   updateTeamMember: (id: string, updates: Partial<TeamMember>) => void
   removeTeamMember: (id: string) => void
   toggleOnCallAvailable: (id: string) => void
+
+  // User Profile & Account System
+  userProfile: UserProfile | null
+  companyAccounts: CompanyAccount[]
+  currentCompanyCode: string | null
+  createUserProfile: (profile: Omit<UserProfile, 'id' | 'memberNumber' | 'createdAt' | 'updatedAt'>) => string
+  updateUserProfile: (updates: Partial<UserProfile>) => void
+  generateMemberNumber: () => string
+  createCompanyAccount: (company: Omit<CompanyAccount, 'id' | 'companyCode' | 'createdAt' | 'updatedAt'>) => string
+  updateCompanyAccount: (companyCode: string, updates: Partial<CompanyAccount>) => void
+  setCurrentCompanyCode: (code: string) => void
+  generateCompanyCode: () => string
+  linkCompanyToUser: (companyCode: string) => void
+  connectCompanies: (companyCode: string) => void // Connect to another company for work sharing
+
+  // Call Bidding System
+  incomingCalls: IncomingCall[]
+  callBids: CallBid[]
+  addIncomingCall: (call: Omit<IncomingCall, 'id' | 'receivedAt' | 'status'>) => string
+  claimCall: (callId: string, memberNumber: string) => void
+  bidOnCall: (callId: string, memberNumber: string, memberName: string, estimatedArrival: number) => void
+  acceptBid: (bidId: string) => void
+  rejectBid: (bidId: string) => void
+  cancelCall: (callId: string) => void
+  getActiveCallsForCompany: (companyCode: string) => IncomingCall[]
+  getAvailableBidders: () => TeamMember[] // Members currently on-call and available
 
   // Entity Management System
   entityTypes: { [key: string]: EntityType }
@@ -295,6 +385,213 @@ export const useAppStore = create<AppState>((set, get) => ({
       )
     }))
     get().saveSettings()
+  },
+
+  // User Profile & Account System
+  userProfile: null,
+  companyAccounts: [],
+  currentCompanyCode: null,
+
+  generateMemberNumber: () => {
+    // Generate 8-digit member number (e.g., "M2501234")
+    const timestamp = Date.now().toString().slice(-6)
+    const random = Math.floor(Math.random() * 100).toString().padStart(2, '0')
+    return `M${timestamp}${random}`
+  },
+
+  generateCompanyCode: () => {
+    // Generate 6-character company code (e.g., "ELX-A3B")
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    const prefix = Array(3).fill(0).map(() => chars[Math.floor(Math.random() * chars.length)]).join('')
+    const suffix = Array(3).fill(0).map(() => chars[Math.floor(Math.random() * chars.length)]).join('')
+    return `${prefix}-${suffix}`
+  },
+
+  createUserProfile: (profile) => {
+    const memberNumber = get().generateMemberNumber()
+    const newProfile: UserProfile = {
+      ...profile,
+      id: `user_${Date.now()}`,
+      memberNumber,
+      linkedCompanies: profile.linkedCompanies || [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
+    set({ userProfile: newProfile })
+    get().saveSettings()
+    return memberNumber
+  },
+
+  updateUserProfile: (updates) => {
+    set((state) => ({
+      userProfile: state.userProfile ? {
+        ...state.userProfile,
+        ...updates,
+        updatedAt: Date.now()
+      } : null
+    }))
+    get().saveSettings()
+  },
+
+  createCompanyAccount: (company) => {
+    const companyCode = get().generateCompanyCode()
+    const newCompany: CompanyAccount = {
+      ...company,
+      id: `company_${Date.now()}`,
+      companyCode,
+      members: company.members || [],
+      connectedCompanies: company.connectedCompanies || [],
+      settings: company.settings || {
+        allowExternalBidding: true,
+        requireBidApproval: false,
+        defaultCallBonus: 50,
+        daytimeCallBonus: 25,
+        emergencyCallBonus: 100
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
+    set((state) => ({
+      companyAccounts: [...state.companyAccounts, newCompany],
+      currentCompanyCode: companyCode
+    }))
+    get().saveSettings()
+    return companyCode
+  },
+
+  updateCompanyAccount: (companyCode, updates) => {
+    set((state) => ({
+      companyAccounts: state.companyAccounts.map(c =>
+        c.companyCode === companyCode ? { ...c, ...updates, updatedAt: Date.now() } : c
+      )
+    }))
+    get().saveSettings()
+  },
+
+  setCurrentCompanyCode: (code) => {
+    set({ currentCompanyCode: code })
+    get().saveSettings()
+  },
+
+  linkCompanyToUser: (companyCode) => {
+    const state = get()
+    if (state.userProfile && !state.userProfile.linkedCompanies.includes(companyCode)) {
+      set((state) => ({
+        userProfile: state.userProfile ? {
+          ...state.userProfile,
+          linkedCompanies: [...state.userProfile.linkedCompanies, companyCode],
+          updatedAt: Date.now()
+        } : null
+      }))
+      get().saveSettings()
+    }
+  },
+
+  connectCompanies: (companyCode) => {
+    const state = get()
+    if (state.currentCompanyCode) {
+      set((state) => ({
+        companyAccounts: state.companyAccounts.map(c =>
+          c.companyCode === state.currentCompanyCode
+            ? {
+                ...c,
+                connectedCompanies: [...(c.connectedCompanies || []), companyCode],
+                updatedAt: Date.now()
+              }
+            : c
+        )
+      }))
+      get().saveSettings()
+    }
+  },
+
+  // Call Bidding System
+  incomingCalls: [],
+  callBids: [],
+
+  addIncomingCall: (call) => {
+    const newCall: IncomingCall = {
+      ...call,
+      id: `call_${Date.now()}`,
+      receivedAt: Date.now(),
+      status: 'open'
+    }
+    set((state) => ({
+      incomingCalls: [...state.incomingCalls, newCall]
+    }))
+    get().saveSettings()
+    return newCall.id
+  },
+
+  claimCall: (callId, memberNumber) => {
+    set((state) => ({
+      incomingCalls: state.incomingCalls.map(call =>
+        call.id === callId
+          ? { ...call, status: 'claimed', claimedBy: memberNumber, claimedAt: Date.now() }
+          : call
+      )
+    }))
+    get().saveSettings()
+  },
+
+  bidOnCall: (callId, memberNumber, memberName, estimatedArrival) => {
+    const newBid: CallBid = {
+      id: `bid_${Date.now()}`,
+      callId,
+      memberNumber,
+      memberName,
+      bidTime: Date.now(),
+      estimatedArrival,
+      status: 'pending'
+    }
+    set((state) => ({
+      callBids: [...state.callBids, newBid]
+    }))
+    get().saveSettings()
+  },
+
+  acceptBid: (bidId) => {
+    const bid = get().callBids.find(b => b.id === bidId)
+    if (bid) {
+      get().claimCall(bid.callId, bid.memberNumber)
+      set((state) => ({
+        callBids: state.callBids.map(b =>
+          b.id === bidId ? { ...b, status: 'accepted' } :
+          b.callId === bid.callId ? { ...b, status: 'rejected' } : b
+        )
+      }))
+      get().saveSettings()
+    }
+  },
+
+  rejectBid: (bidId) => {
+    set((state) => ({
+      callBids: state.callBids.map(b =>
+        b.id === bidId ? { ...b, status: 'rejected' } : b
+      )
+    }))
+    get().saveSettings()
+  },
+
+  cancelCall: (callId) => {
+    set((state) => ({
+      incomingCalls: state.incomingCalls.map(call =>
+        call.id === callId ? { ...call, status: 'cancelled' } : call
+      )
+    }))
+    get().saveSettings()
+  },
+
+  getActiveCallsForCompany: (companyCode) => {
+    const state = get()
+    return state.incomingCalls.filter(
+      call => call.companyCode === companyCode && call.status === 'open'
+    )
+  },
+
+  getAvailableBidders: () => {
+    const state = get()
+    return state.teamMembers.filter(m => m.onCallAvailable)
   },
 
   // Entity Management System
@@ -943,7 +1240,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers } = parsed
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids } = parsed
           set({
             apiKeys,
             integrations,
@@ -958,7 +1255,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...(companyProfiles && { companyProfiles }),
             ...(currentCompanyId !== undefined && { currentCompanyId }),
             ...(onCallStatus && { onCallStatus }),
-            ...(teamMembers && { teamMembers })
+            ...(teamMembers && { teamMembers }),
+            ...(userProfile && { userProfile }),
+            ...(companyAccounts && { companyAccounts }),
+            ...(currentCompanyCode && { currentCompanyCode }),
+            ...(incomingCalls && { incomingCalls }),
+            ...(callBids && { callBids })
           })
         } catch (e) {
           console.error('Failed to load settings:', e)
@@ -968,8 +1270,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers, userProfile, companyAccounts, currentCompanyCode, incomingCalls, callBids }))
     }
   },
 }))

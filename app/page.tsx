@@ -17,6 +17,8 @@ import Estimates from '@/components/estimates'
 import WorkOrders from '@/components/work-orders'
 import Invoices from '@/components/invoices'
 import OnCallIndicator from '@/components/on-call-indicator'
+import AccountMenu from '@/components/account-menu'
+import CallBidding from '@/components/call-bidding'
 import { useEffect } from 'react'
 
 export default function Home() {
@@ -70,6 +72,10 @@ export default function Home() {
     return <Invoices />
   }
 
+  if (currentSection === 'call-bidding') {
+    return <CallBidding />
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -92,6 +98,9 @@ export default function Home() {
                 <p className="text-xs text-muted-foreground">Your expert construction assistant</p>
               </div>
             </div>
+
+            {/* Account Menu in Top Right */}
+            <AccountMenu />
           </div>
         </div>
       </header>
@@ -227,6 +236,31 @@ export default function Home() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Track jobs, customers, invoices, and subcontractors
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Call Bidding Card */}
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-yellow-500/50 border-2 border-yellow-500/20 bg-yellow-500/5"
+              onClick={() => setCurrentSection('call-bidding')}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-yellow-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Work Call Bidding</CardTitle>
+                    <CardDescription className="text-yellow-600 dark:text-yellow-400">
+                      Uber-style work claims
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Claim incoming work calls, earn bonuses, and manage team availability
                 </p>
               </CardContent>
             </Card>
