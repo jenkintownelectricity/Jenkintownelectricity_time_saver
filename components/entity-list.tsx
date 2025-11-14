@@ -122,8 +122,7 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
   }
 
   const handleCreate = () => {
-    setCurrentEntityView(entityTypeId, null)
-    // TODO: Navigate to create form
+    setCurrentEntityView(entityTypeId, 'new')
   }
 
   const getFieldValue = (entity: any, fieldName: string) => {

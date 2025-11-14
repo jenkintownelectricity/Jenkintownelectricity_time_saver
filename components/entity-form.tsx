@@ -27,7 +27,7 @@ export default function EntityForm({ entityTypeId, entityId }: EntityFormProps) 
   } = useAppStore()
 
   const entityType = entityTypes[entityTypeId]
-  const existingEntity = entityId ? getEntity(entityId) : null
+  const existingEntity = (entityId && entityId !== 'new') ? getEntity(entityId) : null
 
   // Initialize form data
   const [formData, setFormData] = useState<{ [key: string]: any }>({})
