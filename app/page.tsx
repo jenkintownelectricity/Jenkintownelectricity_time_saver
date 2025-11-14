@@ -9,6 +9,8 @@ import PhotoAnalysis from '@/components/photo-analysis'
 import NECLookup from '@/components/nec-lookup'
 import JobsBusiness from '@/components/jobs-business'
 import Settings from '@/components/settings'
+import WorkCallBidding from '@/components/work-call-bidding'
+import AccountMenu from '@/components/account-menu'
 import { useEffect } from 'react'
 
 export default function Home() {
@@ -38,6 +40,10 @@ export default function Home() {
     return <Settings />
   }
 
+  if (currentSection === 'work-calls') {
+    return <WorkCallBidding />
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -53,6 +59,7 @@ export default function Home() {
                 <p className="text-xs text-muted-foreground">Your expert construction assistant</p>
               </div>
             </div>
+            <AccountMenu />
           </div>
         </div>
       </header>
@@ -148,6 +155,29 @@ export default function Home() {
               <CardContent>
                 <p className="text-sm text-muted-foreground">
                   Track jobs, customers, invoices, and subcontractors
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Work Call Bidding Card */}
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:border-yellow-500/50 border-yellow-500/30"
+              onClick={() => setCurrentSection('work-calls')}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-yellow-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Work Call Bidding</CardTitle>
+                    <CardDescription>Uber-style job claims</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Claim emergency, daytime & scheduled calls with bonuses
                 </p>
               </CardContent>
             </Card>
