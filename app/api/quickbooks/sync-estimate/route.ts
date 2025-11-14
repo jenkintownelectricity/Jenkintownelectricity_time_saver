@@ -49,12 +49,22 @@ export async function POST(request: NextRequest) {
     )
 
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error('QuickBooks API error:', errorData)
+      const errorText = await response.text()
+      console.error('QuickBooks API error:', errorText)
+
+      let errorData
+      try {
+        errorData = JSON.parse(errorText)
+      } catch (e) {
+        errorData = { message: errorText }
+      }
+
       return NextResponse.json(
         {
           error: 'Failed to sync to QuickBooks',
-          details: errorData
+          details: errorData,
+          statusCode: response.status,
+          rawError: errorText.substring(0, 500)
         },
         { status: response.status }
       )

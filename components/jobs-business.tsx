@@ -31,7 +31,10 @@ export default function JobsBusiness() {
     getEntitiesByType,
     currentEntityView,
     currentEntityId,
-    setCurrentEntityView
+    setCurrentEntityView,
+    estimates,
+    invoices,
+    workOrders
   } = useAppStore()
 
   // If viewing/editing an entity
@@ -57,9 +60,9 @@ export default function JobsBusiness() {
     totalJobs: getCounts('job'),
     activeJobs: getEntitiesByType('job').filter(j => j.data.status === 'In Progress').length,
     totalCustomers: getCounts('customer'),
-    pendingInvoices: getEntitiesByType('invoice').filter(i => i.data.status === 'Sent' || i.data.status === 'Overdue').length,
-    totalEstimates: getCounts('estimate'),
-    pendingEstimates: getEntitiesByType('estimate').filter(e => e.data.status === 'Sent').length,
+    pendingInvoices: invoices.filter(i => i.status === 'Sent' || i.status === 'Overdue').length,
+    totalEstimates: estimates.length,
+    pendingEstimates: estimates.filter(e => e.status === 'Sent').length,
   }
 
   // Entity cards configuration
@@ -92,9 +95,9 @@ export default function JobsBusiness() {
       icon: FileText,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
-      count: getCounts('estimate'),
+      count: estimates.length,
       pending: stats.pendingEstimates,
-      enabled: getEntityType('estimate')?.enabled
+      enabled: true
     },
     {
       id: 'workOrder',
@@ -103,8 +106,8 @@ export default function JobsBusiness() {
       icon: ClipboardCheck,
       color: 'text-purple-500',
       bgColor: 'bg-purple-500/10',
-      count: getCounts('workOrder'),
-      enabled: getEntityType('workOrder')?.enabled
+      count: workOrders.length,
+      enabled: true
     },
     {
       id: 'invoice',
@@ -113,9 +116,9 @@ export default function JobsBusiness() {
       icon: DollarSign,
       color: 'text-red-500',
       bgColor: 'bg-red-500/10',
-      count: getCounts('invoice'),
+      count: invoices.length,
       pending: stats.pendingInvoices,
-      enabled: getEntityType('invoice')?.enabled
+      enabled: true
     },
     {
       id: 'vendor',

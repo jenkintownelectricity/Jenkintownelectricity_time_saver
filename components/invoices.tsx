@@ -213,18 +213,30 @@ export default function Invoices() {
         alert(`✅ Invoice ${invoice.number} synced to QuickBooks successfully!`)
       } else {
         // Show detailed error message
-        let errorMsg = `Failed to sync to QuickBooks: ${data.error}`
+        let errorMsg = `Failed to sync to QuickBooks\n\n`
+        errorMsg += `Status Code: ${data.statusCode || response.status}\n\n`
+
         if (data.details?.Fault?.Error) {
           const qbError = data.details.Fault.Error[0]
-          errorMsg += `\n\nQuickBooks Error: ${qbError.Message}`
+          errorMsg += `QuickBooks Error: ${qbError.Message}\n`
           if (qbError.Detail) {
-            errorMsg += `\nDetails: ${qbError.Detail}`
+            errorMsg += `Details: ${qbError.Detail}\n`
           }
+          if (qbError.code) {
+            errorMsg += `Code: ${qbError.code}\n`
+          }
+        } else if (data.rawError) {
+          errorMsg += `Error: ${data.rawError}\n`
+        } else {
+          errorMsg += `Error: ${JSON.stringify(data.details || data.error)}\n`
         }
+
+        console.error('Full QB error:', data)
         alert(errorMsg)
       }
     } catch (error) {
-      alert('Error syncing to QuickBooks. Please check your connection and try again.')
+      console.error('Sync error:', error)
+      alert(`Error syncing to QuickBooks.\n\nError: ${error}\n\nPlease check your connection and try again.`)
     }
   }
 
