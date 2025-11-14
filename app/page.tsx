@@ -4,6 +4,7 @@ import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Camera, Mic, BookOpen, Briefcase, Zap, DollarSign, Star, QrCode, UserCheck } from 'lucide-react'
+import Image from 'next/image'
 import VoiceInterface from '@/components/voice-interface'
 import PhotoAnalysis from '@/components/photo-analysis'
 import NECLookup from '@/components/nec-lookup'
@@ -75,8 +76,14 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <Zap className="w-6 h-6 text-primary-foreground" />
+              <div className="w-12 h-12 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                <Image
+                  src="/icon.png"
+                  alt="AppIo.AI Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-foreground">AppIo.AI</h1>
