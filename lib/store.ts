@@ -1,7 +1,73 @@
 import { create } from 'zustand'
 import { EntityType, EntityInstance, DEFAULT_ENTITIES } from './entities'
 
-export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings'
+export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'work-calls'
+
+// Work Call Bidding System Types
+export type CallType = 'emergency' | 'daytime' | 'scheduled'
+export type CallStatus = 'active' | 'claimed' | 'expired' | 'completed'
+export type BidMode = 'first-come' | 'bidding'
+
+export interface UserAccount {
+  memberNumber: string // e.g., "M2501234"
+  name: string
+  email: string
+  phone: string
+  jobTitle: string // e.g., "Electrician", "Project Manager", "Owner"
+  createdAt: number
+}
+
+export interface Company {
+  code: string // e.g., "ELX-A3B"
+  name: string
+  ownerId: string // member number of owner
+  members: string[] // member numbers
+  linkedCompanies: string[] // company codes
+  settings: CompanySettings
+  createdAt: number
+}
+
+export interface CompanySettings {
+  bidMode: BidMode
+  emergencyBonus: number
+  daytimeBonus: number
+  scheduledBonus: number
+  emergencyTimeout: number // minutes
+  daytimeTimeout: number // minutes
+  scheduledTimeout: number // minutes
+}
+
+export interface WorkCall {
+  id: string
+  companyCode: string
+  type: CallType
+  title: string
+  description: string
+  location: string
+  customerName: string
+  customerPhone: string
+  bonus: number
+  createdAt: number
+  expiresAt: number
+  status: CallStatus
+  claimedBy?: string // member number
+  claimedAt?: number
+  bids?: CallBid[]
+}
+
+export interface CallBid {
+  memberNumber: string
+  arrivalTime: string // e.g., "15 minutes"
+  bidAt: number
+}
+
+export interface CallStats {
+  totalCalls: number
+  claimedCalls: number
+  expiredCalls: number
+  totalBonusEarned: number
+  averageResponseTime: number // seconds
+}
 
 export interface VoiceCallState {
   isActive: boolean
@@ -29,25 +95,25 @@ interface AppState {
   // Navigation
   currentSection: AppSection
   setCurrentSection: (section: AppSection) => void
-  
+
   // Voice AI
   voiceCall: VoiceCallState
   startVoiceCall: () => void
   endVoiceCall: () => void
   addTranscript: (text: string) => void
   updateCallDuration: (duration: number) => void
-  
+
   // Photo Analysis
   photos: PhotoAnalysis[]
   addPhoto: (imageUrl: string) => void
   updatePhotoAnalysis: (id: string, analysis: string) => void
   removePhoto: (id: string) => void
-  
+
   // NEC Codes
   bookmarkedCodes: NECCode[]
   addBookmark: (code: NECCode) => void
   removeBookmark: (codeNumber: string) => void
-  
+
   // Entity Management System
   entityTypes: { [key: string]: EntityType }
   entities: EntityInstance[]
@@ -60,6 +126,25 @@ interface AppState {
   getEntity: (id: string) => EntityInstance | undefined
   getEntitiesByType: (entityTypeId: string) => EntityInstance[]
   setCurrentEntityView: (entityTypeId: string | null, entityId?: string | null) => void
+
+  // Work Call Bidding System
+  userAccount: UserAccount | null
+  companies: Company[]
+  currentCompanyCode: string | null
+  workCalls: WorkCall[]
+  callStats: CallStats
+  isOnCall: boolean
+  createAccount: (name: string, email: string, phone: string, jobTitle: string) => void
+  createCompany: (name: string) => void
+  switchCompany: (code: string) => void
+  linkCompany: (code: string) => void
+  updateCompanySettings: (code: string, settings: Partial<CompanySettings>) => void
+  createWorkCall: (call: Omit<WorkCall, 'id' | 'createdAt' | 'expiresAt' | 'status'>) => void
+  claimCall: (callId: string) => void
+  placeBid: (callId: string, arrivalTime: string) => void
+  acceptBid: (callId: string, memberNumber: string) => void
+  setOnCall: (isOnCall: boolean) => void
+  expireOldCalls: () => void
 
   // API Keys & Settings
   apiKeys: {
@@ -104,6 +189,27 @@ interface AppState {
   setIntegration: (platform: string, config: any) => void
   loadSettings: () => void
   saveSettings: () => void
+}
+
+// Helper function to generate member number
+const generateMemberNumber = (): string => {
+  const year = new Date().getFullYear().toString().slice(2)
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+  return `M${year}${random}`
+}
+
+// Helper function to generate company code
+const generateCompanyCode = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let code = ''
+  for (let i = 0; i < 3; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  code += '-'
+  for (let i = 0; i < 3; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return code
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -206,6 +312,233 @@ export const useAppStore = create<AppState>((set, get) => ({
     currentEntityId: entityId
   }),
 
+  // Work Call Bidding System
+  userAccount: null,
+  companies: [],
+  currentCompanyCode: null,
+  workCalls: [],
+  callStats: {
+    totalCalls: 0,
+    claimedCalls: 0,
+    expiredCalls: 0,
+    totalBonusEarned: 0,
+    averageResponseTime: 0,
+  },
+  isOnCall: false,
+
+  createAccount: (name, email, phone, jobTitle) => {
+    const memberNumber = generateMemberNumber()
+    const account: UserAccount = {
+      memberNumber,
+      name,
+      email,
+      phone,
+      jobTitle,
+      createdAt: Date.now(),
+    }
+    set({ userAccount: account })
+    get().saveSettings()
+  },
+
+  createCompany: (name) => {
+    const { userAccount } = get()
+    if (!userAccount) return
+
+    const code = generateCompanyCode()
+    const company: Company = {
+      code,
+      name,
+      ownerId: userAccount.memberNumber,
+      members: [userAccount.memberNumber],
+      linkedCompanies: [],
+      settings: {
+        bidMode: 'first-come',
+        emergencyBonus: 100,
+        daytimeBonus: 25,
+        scheduledBonus: 50,
+        emergencyTimeout: 5,
+        daytimeTimeout: 15,
+        scheduledTimeout: 15,
+      },
+      createdAt: Date.now(),
+    }
+    set((state) => ({
+      companies: [...state.companies, company],
+      currentCompanyCode: code,
+    }))
+    get().saveSettings()
+  },
+
+  switchCompany: (code) => {
+    set({ currentCompanyCode: code })
+    get().saveSettings()
+  },
+
+  linkCompany: (code) => {
+    const { currentCompanyCode, companies } = get()
+    if (!currentCompanyCode) return
+
+    set({
+      companies: companies.map((c) =>
+        c.code === currentCompanyCode
+          ? { ...c, linkedCompanies: [...c.linkedCompanies, code] }
+          : c
+      ),
+    })
+    get().saveSettings()
+  },
+
+  updateCompanySettings: (code, settings) => {
+    const { companies } = get()
+    set({
+      companies: companies.map((c) =>
+        c.code === code
+          ? { ...c, settings: { ...c.settings, ...settings } }
+          : c
+      ),
+    })
+    get().saveSettings()
+  },
+
+  createWorkCall: (call) => {
+    const { currentCompanyCode, companies } = get()
+    if (!currentCompanyCode) return
+
+    const company = companies.find((c) => c.code === currentCompanyCode)
+    if (!company) return
+
+    const timeout =
+      call.type === 'emergency' ? company.settings.emergencyTimeout :
+      call.type === 'daytime' ? company.settings.daytimeTimeout :
+      company.settings.scheduledTimeout
+
+    const bonus =
+      call.type === 'emergency' ? company.settings.emergencyBonus :
+      call.type === 'daytime' ? company.settings.daytimeBonus :
+      company.settings.scheduledBonus
+
+    const workCall: WorkCall = {
+      ...call,
+      id: `call_${Date.now()}`,
+      bonus,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + timeout * 60 * 1000,
+      status: 'active',
+      bids: [],
+    }
+
+    set((state) => ({
+      workCalls: [...state.workCalls, workCall],
+      callStats: {
+        ...state.callStats,
+        totalCalls: state.callStats.totalCalls + 1,
+      },
+    }))
+    get().saveSettings()
+  },
+
+  claimCall: (callId) => {
+    const { userAccount, workCalls, callStats } = get()
+    if (!userAccount) return
+
+    const call = workCalls.find((c) => c.id === callId)
+    if (!call || call.status !== 'active') return
+
+    const responseTime = (Date.now() - call.createdAt) / 1000
+
+    set({
+      workCalls: workCalls.map((c) =>
+        c.id === callId
+          ? { ...c, status: 'claimed', claimedBy: userAccount.memberNumber, claimedAt: Date.now() }
+          : c
+      ),
+      callStats: {
+        ...callStats,
+        claimedCalls: callStats.claimedCalls + 1,
+        totalBonusEarned: callStats.totalBonusEarned + call.bonus,
+        averageResponseTime:
+          (callStats.averageResponseTime * callStats.claimedCalls + responseTime) /
+          (callStats.claimedCalls + 1),
+      },
+    })
+    get().saveSettings()
+  },
+
+  placeBid: (callId, arrivalTime) => {
+    const { userAccount, workCalls } = get()
+    if (!userAccount) return
+
+    const bid: CallBid = {
+      memberNumber: userAccount.memberNumber,
+      arrivalTime,
+      bidAt: Date.now(),
+    }
+
+    set({
+      workCalls: workCalls.map((c) =>
+        c.id === callId
+          ? { ...c, bids: [...(c.bids || []), bid] }
+          : c
+      ),
+    })
+    get().saveSettings()
+  },
+
+  acceptBid: (callId, memberNumber) => {
+    const { workCalls, callStats } = get()
+    const call = workCalls.find((c) => c.id === callId)
+    if (!call) return
+
+    const responseTime = (Date.now() - call.createdAt) / 1000
+
+    set({
+      workCalls: workCalls.map((c) =>
+        c.id === callId
+          ? { ...c, status: 'claimed', claimedBy: memberNumber, claimedAt: Date.now() }
+          : c
+      ),
+      callStats: {
+        ...callStats,
+        claimedCalls: callStats.claimedCalls + 1,
+        totalBonusEarned: callStats.totalBonusEarned + call.bonus,
+        averageResponseTime:
+          (callStats.averageResponseTime * callStats.claimedCalls + responseTime) /
+          (callStats.claimedCalls + 1),
+      },
+    })
+    get().saveSettings()
+  },
+
+  setOnCall: (isOnCall) => {
+    set({ isOnCall })
+    get().saveSettings()
+  },
+
+  expireOldCalls: () => {
+    const now = Date.now()
+    const { workCalls, callStats } = get()
+    let expiredCount = 0
+
+    const updatedCalls = workCalls.map((call) => {
+      if (call.status === 'active' && call.expiresAt < now) {
+        expiredCount++
+        return { ...call, status: 'expired' as CallStatus }
+      }
+      return call
+    })
+
+    if (expiredCount > 0) {
+      set({
+        workCalls: updatedCalls,
+        callStats: {
+          ...callStats,
+          expiredCalls: callStats.expiredCalls + expiredCount,
+        },
+      })
+      get().saveSettings()
+    }
+  },
+
   // API Keys & Settings
   apiKeys: {
     vapi: null,
@@ -280,13 +613,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes } = parsed
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall } = parsed
           set({
             apiKeys,
             integrations,
             ...(ownerSettings && { ownerSettings }),
             ...(entities && { entities }),
-            ...(entityTypes && { entityTypes })
+            ...(entityTypes && { entityTypes }),
+            ...(userAccount && { userAccount }),
+            ...(companies && { companies }),
+            ...(currentCompanyCode && { currentCompanyCode }),
+            ...(workCalls && { workCalls }),
+            ...(callStats && { callStats }),
+            ...(isOnCall !== undefined && { isOnCall }),
           })
         } catch (e) {
           console.error('Failed to load settings:', e)
@@ -296,8 +635,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall }))
     }
   },
 }))
