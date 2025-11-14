@@ -19,7 +19,8 @@ import {
   Mail,
   MessageSquare,
   Download,
-  ExternalLink
+  ExternalLink,
+  Upload
 } from 'lucide-react'
 
 interface PaymentMethod {
@@ -104,6 +105,24 @@ export default function GetPaidNow() {
 
   const handleShare = (method: PaymentMethod) => {
     setShowShareMenu(method)
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file')
+      return
+    }
+
+    // Convert to data URL
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setFormData({ ...formData, value: reader.result as string })
+    }
+    reader.readAsDataURL(file)
   }
 
   const ShareMenu = ({ method, onClose }: { method: PaymentMethod; onClose: () => void }) => {
@@ -268,8 +287,29 @@ export default function GetPaidNow() {
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    {formData.type === 'link' ? 'Payment Link' : 'QR Code Image URL'}
+                    {formData.type === 'link' ? 'Payment Link' : 'QR Code Image'}
                   </label>
+                  {formData.type === 'qr' && (
+                    <div className="mb-2">
+                      <input
+                        type="file"
+                        id="qr-upload"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => document.getElementById('qr-upload')?.click()}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload QR Code Image
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1 text-center">or paste URL below</p>
+                    </div>
+                  )}
                   <Input
                     placeholder={formData.type === 'link'
                       ? 'https://venmo.com/u/yourname'
@@ -277,6 +317,16 @@ export default function GetPaidNow() {
                     value={formData.value}
                     onChange={(e) => setFormData({ ...formData, value: e.target.value })}
                   />
+                  {formData.type === 'qr' && formData.value && (
+                    <div className="mt-3 p-4 border rounded-lg bg-muted/50">
+                      <p className="text-xs text-muted-foreground mb-2 text-center">Preview:</p>
+                      <img
+                        src={formData.value}
+                        alt="QR Code Preview"
+                        className="w-48 h-48 mx-auto object-contain"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 justify-end">
