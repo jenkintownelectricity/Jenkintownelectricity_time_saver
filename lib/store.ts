@@ -58,6 +58,11 @@ export interface UserProfile {
   photoUrl?: string
   linkedCompanies: string[] // Array of company codes this user is linked to
   primaryCompanyCode?: string // Main company
+
+  // Subscription tracking (optional - only needed when monetization enabled)
+  subscriptionTier?: 'free' | 'team_small' | 'team_medium' | 'team_large'
+  apiMode?: 'byoa' | 'managed' // Bring Your Own APIs vs Managed APIs
+
   createdAt: number
   updatedAt: number
 }
@@ -80,6 +85,20 @@ export interface CompanyAccount {
     daytimeCallBonus: number
     emergencyCallBonus: number
   }
+
+  // Subscription & billing (optional - only needed when monetization enabled)
+  subscription?: {
+    tier: 'free' | 'team_small' | 'team_medium' | 'team_large'
+    status: 'active' | 'trial' | 'past_due' | 'cancelled'
+    apiMode: 'byoa' | 'managed'
+    maxUsers: number // Based on tier
+    currentUsers: number // Track team size
+    billingCycle: 'monthly' | 'annual'
+    nextBillingDate?: number
+    stripeCustomerId?: string
+    stripeSubscriptionId?: string
+  }
+
   createdAt: number
   updatedAt: number
 }
@@ -243,6 +262,54 @@ interface AppState {
     defaultVapiKey: string
     defaultVapiAssistantId: string
     defaultAnthropicKey: string
+
+    // Monetization Controls - All disabled by default during beta
+    monetization: {
+      // Master switch - turns ALL money features on/off
+      enabled: boolean
+
+      // Subscription system
+      subscriptions: {
+        enabled: boolean
+        enforceLimits: boolean // If false, all tiers get enterprise features
+        billingProvider: 'stripe' | 'manual'
+      }
+
+      // Call bidding fees
+      callBidding: {
+        enabled: boolean
+        transactionFee: {
+          emergency: number
+          daytime: number
+          scheduled: number
+        }
+        bonusPoolFee: number // Percentage (0.15 = 15%)
+        networkAccessFee: number // Monthly fee
+      }
+
+      // API management
+      apiManagement: {
+        enabled: boolean
+        allowBYOA: boolean // Allow Bring Your Own APIs
+        managedMarkup: number // Multiplier (2.0 = 2x cost)
+        trackUsage: boolean
+      }
+
+      // Jake chatbot integration
+      jakeChatbot: {
+        enabled: boolean
+        leadFee: number // Per qualified lead
+        conversionBonus: number // Percentage of job value
+        whitelabelFee: number // Monthly fee for custom branding
+      }
+
+      // Marketplace & referrals
+      marketplace: {
+        enabled: boolean
+        referralCommission: number // Percentage (0.08 = 8%)
+        premiumListingFee: number // Monthly fee
+      }
+    }
   }
   integrations: {
     // Phase 1: Core Foundation (Based on customer research - absolute priorities)
@@ -272,6 +339,14 @@ interface AppState {
   setIntegration: (platform: string, config: any) => void
   loadSettings: () => void
   saveSettings: () => void
+
+  // Billing & Monetization Functions (all guarded by monetization toggles)
+  canAccessFeature: (feature: string) => boolean
+  canAddTeamMemberToTier: (companyCode: string) => boolean
+  calculateCallClaimFee: (callType: 'emergency' | 'daytime' | 'scheduled') => number
+  calculateBonusPoolFee: (bonusAmount: number) => number
+  recordBillableEvent: (eventType: string, amount: number, metadata?: any) => void
+  getSubscriptionLimits: (tier: 'free' | 'team_small' | 'team_medium' | 'team_large') => { maxUsers: number, features: string[] }
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -1207,6 +1282,48 @@ export const useAppStore = create<AppState>((set, get) => ({
     defaultVapiKey: '58f63a6f-6694-4fe3-8f72-fea362908803',
     defaultVapiAssistantId: '00788639-dd74-48ec-aa8b-a6572d70e45b',
     defaultAnthropicKey: '', // Add your Anthropic key here if you want
+
+    // Monetization Controls - All disabled during beta testing
+    monetization: {
+      enabled: false, // Master switch
+
+      subscriptions: {
+        enabled: false,
+        enforceLimits: false, // Beta users get all features
+        billingProvider: 'stripe'
+      },
+
+      callBidding: {
+        enabled: false,
+        transactionFee: {
+          emergency: 5.00,
+          daytime: 3.00,
+          scheduled: 2.00
+        },
+        bonusPoolFee: 0.15, // 15%
+        networkAccessFee: 50.00
+      },
+
+      apiManagement: {
+        enabled: false,
+        allowBYOA: true,
+        managedMarkup: 2.0, // 2x cost
+        trackUsage: false
+      },
+
+      jakeChatbot: {
+        enabled: false,
+        leadFee: 7.50,
+        conversionBonus: 0.15, // 15%
+        whitelabelFee: 200.00
+      },
+
+      marketplace: {
+        enabled: false,
+        referralCommission: 0.08, // 8%
+        premiumListingFee: 50.00
+      }
+    }
   },
   integrations: {
     // Phase 1: Core Foundation (82.4% of contractors need these)
@@ -1261,6 +1378,126 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().saveSettings()
     }, 0)
   },
+
+  // Billing & Monetization Function Implementations
+  // All functions check monetization.enabled before applying any fees/limits
+
+  canAccessFeature: (feature) => {
+    const { ownerSettings } = get()
+
+    // If monetization is disabled, everyone gets all features
+    if (!ownerSettings.monetization.enabled) {
+      return true
+    }
+
+    // If subscriptions aren't enabled or limits aren't enforced, allow access
+    if (!ownerSettings.monetization.subscriptions.enabled ||
+        !ownerSettings.monetization.subscriptions.enforceLimits) {
+      return true
+    }
+
+    // TODO: Implement feature-based access control when needed
+    // For now, all features are available to all tiers
+    return true
+  },
+
+  canAddTeamMemberToTier: (companyCode) => {
+    const { ownerSettings, companyAccounts } = get()
+
+    // If monetization disabled or limits not enforced, allow unlimited
+    if (!ownerSettings.monetization.enabled ||
+        !ownerSettings.monetization.subscriptions.enabled ||
+        !ownerSettings.monetization.subscriptions.enforceLimits) {
+      return true
+    }
+
+    const company = companyAccounts.find(c => c.companyCode === companyCode)
+    if (!company || !company.subscription) {
+      // No subscription info = free tier during beta
+      return true
+    }
+
+    // Check if current user count is below max for tier
+    return company.subscription.currentUsers < company.subscription.maxUsers
+  },
+
+  calculateCallClaimFee: (callType) => {
+    const { ownerSettings } = get()
+
+    // If monetization disabled, no fees
+    if (!ownerSettings.monetization.enabled ||
+        !ownerSettings.monetization.callBidding.enabled) {
+      return 0
+    }
+
+    return ownerSettings.monetization.callBidding.transactionFee[callType]
+  },
+
+  calculateBonusPoolFee: (bonusAmount) => {
+    const { ownerSettings } = get()
+
+    // If monetization disabled, no fees
+    if (!ownerSettings.monetization.enabled ||
+        !ownerSettings.monetization.callBidding.enabled) {
+      return 0
+    }
+
+    return bonusAmount * ownerSettings.monetization.callBidding.bonusPoolFee
+  },
+
+  recordBillableEvent: (eventType, amount, metadata = {}) => {
+    const { ownerSettings } = get()
+
+    // Only record if monetization is enabled
+    if (!ownerSettings.monetization.enabled) {
+      console.log(`[BETA MODE] Billable event skipped: ${eventType} - $${amount}`, metadata)
+      return
+    }
+
+    // TODO: When database is ready, store billable events
+    // For now, just log them
+    console.log(`[BILLING] ${eventType}: $${amount}`, metadata)
+
+    // Future: Store in billing_events table
+    // const event = {
+    //   id: `billing_${Date.now()}`,
+    //   type: eventType,
+    //   amount,
+    //   metadata,
+    //   timestamp: Date.now()
+    // }
+  },
+
+  getSubscriptionLimits: (tier) => {
+    switch (tier) {
+      case 'free':
+        return {
+          maxUsers: 1,
+          features: ['all'] // Solo users get all features, just limited to 1 user
+        }
+      case 'team_small':
+        return {
+          maxUsers: 3,
+          features: ['all']
+        }
+      case 'team_medium':
+        return {
+          maxUsers: 10,
+          features: ['all', 'network_bidding']
+        }
+      case 'team_large':
+        return {
+          maxUsers: 999, // Effectively unlimited
+          features: ['all', 'network_bidding', 'priority_support', 'custom_integrations']
+        }
+      default:
+        return {
+          maxUsers: 1,
+          features: ['all']
+        }
+    }
+  },
+
   loadSettings: () => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('appio-settings')
