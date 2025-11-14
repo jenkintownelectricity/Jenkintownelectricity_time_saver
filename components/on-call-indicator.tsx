@@ -6,14 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, Check, Zap, X, UserPlus, Trash2, Phone, Briefcase } from 'lucide-react'
+import { AlertCircle, Check, Zap, X, Phone } from 'lucide-react'
 
 export default function OnCallIndicator() {
-  const { onCallStatus, setOnCall, clearOnCall, onCallVolunteers, addOnCallVolunteer, removeOnCallVolunteer } = useAppStore()
+  const { onCallStatus, setOnCall, clearOnCall, teamMembers } = useAppStore()
   const [showModal, setShowModal] = useState(false)
-  const [showManageVolunteers, setShowManageVolunteers] = useState(false)
   const [personName, setPersonName] = useState('')
-  const [newVolunteer, setNewVolunteer] = useState({ name: '', phone: '', type: 'employee' as 'employee' | '1099' })
+
+  // Only show team members who are on-call available
+  const onCallAvailableMembers = teamMembers.filter(m => m.onCallAvailable)
 
   const handleSetOnCall = () => {
     if (personName.trim()) {
@@ -31,17 +32,6 @@ export default function OnCallIndicator() {
   const handleClearOnCall = () => {
     if (confirm(`Clear on-call status for ${onCallStatus.personName}?`)) {
       clearOnCall()
-    }
-  }
-
-  const handleAddVolunteer = () => {
-    if (newVolunteer.name.trim() && newVolunteer.phone.trim()) {
-      addOnCallVolunteer({
-        name: newVolunteer.name.trim(),
-        phone: newVolunteer.phone.trim(),
-        type: newVolunteer.type
-      })
-      setNewVolunteer({ name: '', phone: '', type: 'employee' })
     }
   }
 
@@ -128,7 +118,7 @@ export default function OnCallIndicator() {
       </Card>
 
       {/* Set On-Call Modal */}
-      {showModal && !showManageVolunteers && (
+      {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
             <CardHeader>
@@ -136,43 +126,37 @@ export default function OnCallIndicator() {
                 <Zap className="w-5 h-5 text-yellow-500" />
                 Set On-Call Person
               </CardTitle>
-              <CardDescription>Choose from your volunteers or enter a name</CardDescription>
+              <CardDescription>Choose from available team members or enter a name</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Volunteer List */}
-              {onCallVolunteers.length > 0 && (
+              {/* Available Team Members List */}
+              {onCallAvailableMembers.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Quick Select</label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowManageVolunteers(true)}
-                    >
-                      <UserPlus className="w-4 h-4 mr-1" />
-                      Manage
-                    </Button>
-                  </div>
+                  <label className="text-sm font-medium">Available Team Members</label>
                   <div className="grid gap-2">
-                    {onCallVolunteers.map(volunteer => (
+                    {onCallAvailableMembers.map(member => (
                       <Button
-                        key={volunteer.id}
+                        key={member.id}
                         variant="outline"
                         className="w-full justify-start text-left h-auto py-3"
-                        onClick={() => handleSelectVolunteer(volunteer.name)}
+                        onClick={() => handleSelectVolunteer(member.name)}
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold">{volunteer.name}</span>
-                            {volunteer.type === '1099' ? (
-                              <Badge variant="outline" className="text-xs">1099</Badge>
+                            <span className="font-semibold">{member.name}</span>
+                            {member.type === '1099' ? (
+                              <Badge variant="outline" className="text-xs bg-purple-500 text-white">1099</Badge>
+                            ) : member.type === 'employee' ? (
+                              <Badge variant="outline" className="text-xs bg-blue-500 text-white">Employee</Badge>
+                            ) : member.type === 'subcontractor' ? (
+                              <Badge variant="outline" className="text-xs bg-orange-500 text-white">Sub</Badge>
                             ) : (
-                              <Badge variant="outline" className="text-xs">Employee</Badge>
+                              <Badge variant="outline" className="text-xs bg-green-500 text-white">Work For</Badge>
                             )}
                           </div>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                             <Phone className="w-3 h-3" />
-                            {volunteer.phone}
+                            {member.phone}
                           </div>
                         </div>
                         <Check className="w-4 h-4 text-green-500" />
@@ -182,17 +166,10 @@ export default function OnCallIndicator() {
                 </div>
               )}
 
-              {onCallVolunteers.length === 0 && (
+              {onCallAvailableMembers.length === 0 && (
                 <div className="text-center py-4 text-muted-foreground">
-                  <p className="text-sm mb-2">No volunteers added yet</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowManageVolunteers(true)}
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add Volunteers
-                  </Button>
+                  <p className="text-sm mb-2">No team members available for on-call</p>
+                  <p className="text-xs">Go to Jobs & Business → Team to add members and mark them as on-call available</p>
                 </div>
               )}
 
@@ -226,107 +203,6 @@ export default function OnCallIndicator() {
                 >
                   <Check className="w-4 h-4 mr-2" />
                   Start On-Call
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Manage Volunteers Modal */}
-      {showManageVolunteers && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-blue-500" />
-                Manage On-Call Volunteers
-              </CardTitle>
-              <CardDescription>Add or remove people who can respond to emergencies</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Add New Volunteer */}
-              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-                <h4 className="font-semibold text-sm">Add New Volunteer</h4>
-                <div>
-                  <Input
-                    placeholder="Name"
-                    value={newVolunteer.name}
-                    onChange={(e) => setNewVolunteer({ ...newVolunteer, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Input
-                    placeholder="Phone number"
-                    type="tel"
-                    value={newVolunteer.phone}
-                    onChange={(e) => setNewVolunteer({ ...newVolunteer, phone: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <select
-                    value={newVolunteer.type}
-                    onChange={(e) => setNewVolunteer({ ...newVolunteer, type: e.target.value as 'employee' | '1099' })}
-                    className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                  >
-                    <option value="employee">Employee</option>
-                    <option value="1099">1099 Contractor</option>
-                  </select>
-                </div>
-                <Button
-                  onClick={handleAddVolunteer}
-                  disabled={!newVolunteer.name.trim() || !newVolunteer.phone.trim()}
-                  className="w-full"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add Volunteer
-                </Button>
-              </div>
-
-              {/* Volunteer List */}
-              {onCallVolunteers.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Current Volunteers</h4>
-                  {onCallVolunteers.map(volunteer => (
-                    <div
-                      key={volunteer.id}
-                      className="flex items-center justify-between p-3 bg-background rounded-lg border"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">{volunteer.name}</span>
-                          {volunteer.type === '1099' ? (
-                            <Badge variant="outline" className="text-xs">1099</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs">Employee</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Phone className="w-3 h-3" />
-                          {volunteer.phone}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeOnCallVolunteer(volunteer.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-3 justify-end pt-4 border-t">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowManageVolunteers(false)
-                    setNewVolunteer({ name: '', phone: '', type: 'employee' })
-                  }}
-                >
-                  Done
                 </Button>
               </div>
             </CardContent>

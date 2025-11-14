@@ -413,6 +413,23 @@ export default function Settings() {
 
           <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
             <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">Team/Squad Management</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage your entire team in one place - employees, 1099s, subs, and contractors you work for.
+                Toggle on-call availability, quick filtering, and better communication.
+              </p>
+            </div>
+            <Button
+              variant={ownerSettings.teamManagementEnabled ? "default" : "outline"}
+              onClick={() => setOwnerSetting('teamManagementEnabled', !ownerSettings.teamManagementEnabled)}
+              className="ml-4"
+            >
+              {ownerSettings.teamManagementEnabled ? "ON" : "OFF"}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
+            <div className="flex-1">
               <h3 className="font-semibold text-foreground mb-1">Provide Default API Keys</h3>
               <p className="text-sm text-muted-foreground">
                 When enabled, users without their own API keys will use your default keys (you pay for API usage).

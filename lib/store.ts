@@ -34,11 +34,14 @@ export interface OnCallStatus {
   startedAt: number | null
 }
 
-export interface OnCallVolunteer {
+export interface TeamMember {
   id: string
   name: string
   phone: string
-  type: 'employee' | '1099'
+  email?: string
+  type: 'employee' | '1099' | 'subcontractor' | 'contractor_for'
+  onCallAvailable: boolean
+  notes?: string
   createdAt: number
 }
 
@@ -65,13 +68,15 @@ interface AppState {
   addBookmark: (code: NECCode) => void
   removeBookmark: (codeNumber: string) => void
 
-  // On-Call Status
+  // On-Call Status & Team Management
   onCallStatus: OnCallStatus
-  onCallVolunteers: OnCallVolunteer[]
+  teamMembers: TeamMember[]
   setOnCall: (personName: string) => void
   clearOnCall: () => void
-  addOnCallVolunteer: (volunteer: Omit<OnCallVolunteer, 'id' | 'createdAt'>) => void
-  removeOnCallVolunteer: (id: string) => void
+  addTeamMember: (member: Omit<TeamMember, 'id' | 'createdAt'>) => void
+  updateTeamMember: (id: string, updates: Partial<TeamMember>) => void
+  removeTeamMember: (id: string) => void
+  toggleOnCallAvailable: (id: string) => void
 
   // Entity Management System
   entityTypes: { [key: string]: EntityType }
@@ -141,6 +146,7 @@ interface AppState {
   // Owner/Admin Settings
   ownerSettings: {
     onCallFeatureEnabled: boolean
+    teamManagementEnabled: boolean
     provideDefaultKeys: boolean // If true, use owner's keys as fallback
     defaultVapiKey: string
     defaultVapiAssistantId: string
@@ -230,13 +236,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     bookmarkedCodes: state.bookmarkedCodes.filter(code => code.code !== codeNumber)
   })),
 
-  // On-Call Status
+  // On-Call Status & Team Management
   onCallStatus: {
     isOnCall: false,
     personName: null,
     startedAt: null
   },
-  onCallVolunteers: [],
+  teamMembers: [],
   setOnCall: (personName) => {
     set({
       onCallStatus: {
@@ -257,20 +263,36 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
     get().saveSettings()
   },
-  addOnCallVolunteer: (volunteer) => {
-    const newVolunteer: OnCallVolunteer = {
-      ...volunteer,
-      id: `volunteer_${Date.now()}`,
+  addTeamMember: (member) => {
+    const newMember: TeamMember = {
+      ...member,
+      id: `team_${Date.now()}`,
       createdAt: Date.now()
     }
     set((state) => ({
-      onCallVolunteers: [...state.onCallVolunteers, newVolunteer]
+      teamMembers: [...state.teamMembers, newMember]
     }))
     get().saveSettings()
   },
-  removeOnCallVolunteer: (id) => {
+  updateTeamMember: (id, updates) => {
     set((state) => ({
-      onCallVolunteers: state.onCallVolunteers.filter(v => v.id !== id)
+      teamMembers: state.teamMembers.map(m =>
+        m.id === id ? { ...m, ...updates } : m
+      )
+    }))
+    get().saveSettings()
+  },
+  removeTeamMember: (id) => {
+    set((state) => ({
+      teamMembers: state.teamMembers.filter(m => m.id !== id)
+    }))
+    get().saveSettings()
+  },
+  toggleOnCallAvailable: (id) => {
+    set((state) => ({
+      teamMembers: state.teamMembers.map(m =>
+        m.id === id ? { ...m, onCallAvailable: !m.onCallAvailable } : m
+      )
     }))
     get().saveSettings()
   },
@@ -286,36 +308,45 @@ export const useAppStore = create<AppState>((set, get) => ({
       [entityTypeId]: { ...state.entityTypes[entityTypeId], ...config }
     }
   })),
-  createEntity: (entityTypeId, data, addresses?, linkedContacts?) => set((state) => {
-    const newEntity: EntityInstance = {
-      id: `${entityTypeId}_${Date.now()}`,
-      entityType: entityTypeId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      status: state.entityTypes[entityTypeId]?.fields.find(f => f.name === 'status')?.defaultValue || 'active',
-      data,
-      relationships: {},
-      addresses: addresses || [],
-      linkedContacts: linkedContacts || []
-    }
-    return { entities: [...state.entities, newEntity] }
-  }),
-  updateEntity: (id, data, addresses?, linkedContacts?) => set((state) => ({
-    entities: state.entities.map(entity =>
-      entity.id === id
-        ? {
-            ...entity,
-            data: { ...entity.data, ...data },
-            addresses: addresses !== undefined ? addresses : entity.addresses,
-            linkedContacts: linkedContacts !== undefined ? linkedContacts : entity.linkedContacts,
-            updatedAt: Date.now()
-          }
-        : entity
-    )
-  })),
-  deleteEntity: (id) => set((state) => ({
-    entities: state.entities.filter(entity => entity.id !== id)
-  })),
+  createEntity: (entityTypeId, data, addresses?, linkedContacts?) => {
+    set((state) => {
+      const newEntity: EntityInstance = {
+        id: `${entityTypeId}_${Date.now()}`,
+        entityType: entityTypeId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        status: state.entityTypes[entityTypeId]?.fields.find(f => f.name === 'status')?.defaultValue || 'active',
+        data,
+        relationships: {},
+        addresses: addresses || [],
+        linkedContacts: linkedContacts || []
+      }
+      return { entities: [...state.entities, newEntity] }
+    })
+    get().saveSettings()
+  },
+  updateEntity: (id, data, addresses?, linkedContacts?) => {
+    set((state) => ({
+      entities: state.entities.map(entity =>
+        entity.id === id
+          ? {
+              ...entity,
+              data: { ...entity.data, ...data },
+              addresses: addresses !== undefined ? addresses : entity.addresses,
+              linkedContacts: linkedContacts !== undefined ? linkedContacts : entity.linkedContacts,
+              updatedAt: Date.now()
+            }
+          : entity
+      )
+    }))
+    get().saveSettings()
+  },
+  deleteEntity: (id) => {
+    set((state) => ({
+      entities: state.entities.filter(entity => entity.id !== id)
+    }))
+    get().saveSettings()
+  },
   getEntity: (id) => {
     const state = get()
     return state.entities.find(entity => entity.id === id)
@@ -847,6 +878,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Owner/Admin Settings - these are YOUR credentials
   ownerSettings: {
     onCallFeatureEnabled: false, // Toggle on-call emergency system
+    teamManagementEnabled: false, // Toggle team/squad management
     provideDefaultKeys: true, // Toggle this to enable/disable fallback to your keys
     defaultVapiKey: '58f63a6f-6694-4fe3-8f72-fea362908803',
     defaultVapiAssistantId: '00788639-dd74-48ec-aa8b-a6572d70e45b',
@@ -911,7 +943,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, onCallVolunteers } = parsed
+          const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers } = parsed
           set({
             apiKeys,
             integrations,
@@ -926,7 +958,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...(companyProfiles && { companyProfiles }),
             ...(currentCompanyId !== undefined && { currentCompanyId }),
             ...(onCallStatus && { onCallStatus }),
-            ...(onCallVolunteers && { onCallVolunteers })
+            ...(teamMembers && { teamMembers })
           })
         } catch (e) {
           console.error('Failed to load settings:', e)
@@ -936,8 +968,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, onCallVolunteers } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, onCallVolunteers }))
+      const { apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, taxDocuments, taxPackages, estimates, workOrders, invoices, companyProfiles, currentCompanyId, onCallStatus, teamMembers }))
     }
   },
 }))

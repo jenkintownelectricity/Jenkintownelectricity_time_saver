@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import EntityList from '@/components/entity-list'
 import EntityForm from '@/components/entity-form'
+import TeamManagement from '@/components/team-management'
 import {
   ArrowLeft,
   Briefcase,
@@ -35,8 +36,28 @@ export default function JobsBusiness() {
     setCurrentEntityView,
     estimates,
     invoices,
-    workOrders
+    workOrders,
+    ownerSettings,
+    teamMembers
   } = useAppStore()
+
+  // Load My Contractors count from localStorage
+  const [contractorsCount, setContractorsCount] = useState(0)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedContractors = localStorage.getItem('my_contractors')
+      if (savedContractors) {
+        const contractors = JSON.parse(savedContractors)
+        setContractorsCount(contractors.length)
+      }
+    }
+  }, [])
+
+  // If viewing team management
+  if (currentEntityView === 'team') {
+    return <TeamManagement />
+  }
 
   // If viewing/editing an entity
   if (currentEntityView && currentEntityId) {
@@ -148,8 +169,18 @@ export default function JobsBusiness() {
       icon: Building2,
       color: 'text-amber-500',
       bgColor: 'bg-amber-500/10',
-      count: 0, // This is managed separately
+      count: contractorsCount,
       enabled: true
+    },
+    {
+      id: 'team',
+      title: 'Team / Squad',
+      description: 'Manage your entire team',
+      icon: Users,
+      color: 'text-teal-500',
+      bgColor: 'bg-teal-500/10',
+      count: teamMembers.length,
+      enabled: ownerSettings.teamManagementEnabled
     },
     {
       id: 'official',
@@ -181,6 +212,10 @@ export default function JobsBusiness() {
       setCurrentSection('my-contractors')
       return
     }
+    if (entityId === 'team') {
+      setCurrentEntityView('team', null)
+      return
+    }
     // Use generic entity system for other types
     setCurrentEntityView(entityId, null)
   }
@@ -202,6 +237,11 @@ export default function JobsBusiness() {
     }
     if (entityId === 'my-contractors') {
       setCurrentSection('my-contractors')
+      return
+    }
+    if (entityId === 'team') {
+      // Team management handles its own add modal
+      setCurrentEntityView('team', null)
       return
     }
     // Use generic entity system for other types
