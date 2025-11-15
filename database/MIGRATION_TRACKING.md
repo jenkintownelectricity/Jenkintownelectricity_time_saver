@@ -2,6 +2,8 @@
 
 Keep track of which migrations have been applied to your database.
 
+> **Quick Start:** See [SETUP_CHECKLIST.md](./SETUP_CHECKLIST.md) for step-by-step instructions!
+
 ---
 
 ## ✅ **Applied Migrations**
