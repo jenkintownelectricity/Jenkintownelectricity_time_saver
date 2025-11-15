@@ -40,17 +40,17 @@ export async function GET(request: NextRequest) {
       code.description.toLowerCase().includes(query)
     )
 
-    // TODO: Replace with actual NEC database or API
-    // This is a placeholder with sample codes
-    // In production, you would integrate with a comprehensive NEC code database
+    // PLACEHOLDER: This uses sample NEC codes for demonstration
+    // In production, integrate with a comprehensive NEC code database or API
+    // Options: NEC API, custom database, or licensed NEC code library
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       codes: results,
       placeholder: true,
       message: 'Showing sample NEC codes. Integrate with a full NEC database for production.'
     })
   } catch (error) {
-    console.error('NEC lookup error:', error)
+    // In production, log to error tracking service
     return NextResponse.json(
       { error: 'Failed to lookup NEC code' },
       { status: 500 }

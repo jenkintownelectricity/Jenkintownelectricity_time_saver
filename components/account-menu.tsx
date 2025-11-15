@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { User, Building2, Copy, Check, Plus, Link2, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
+import { validateEmail, validatePhone, validateRequired, validateCompanyCode, validateLength } from '@/lib/validation'
 
 export default function AccountMenu() {
   const {
@@ -34,33 +35,111 @@ export default function AccountMenu() {
   const [copiedMember, setCopiedMember] = useState(false)
   const [copiedCompany, setCopiedCompany] = useState(false)
 
+  const [errors, setErrors] = useState<{
+    name?: string
+    email?: string
+    phone?: string
+    jobTitle?: string
+    companyName?: string
+    linkCode?: string
+  }>({})
+
   const currentCompany = companies.find((c) => c.code === currentCompanyCode)
 
   const handleCreateAccount = () => {
-    if (name && email && phone && jobTitle) {
-      createAccount(name, email, phone, jobTitle)
-      setShowCreateAccount(false)
-      setName('')
-      setEmail('')
-      setPhone('')
-      setJobTitle('')
+    const newErrors: typeof errors = {}
+
+    // Validate name
+    const nameValidation = validateRequired(name, 'Name')
+    if (!nameValidation.isValid) {
+      newErrors.name = nameValidation.error
+    } else {
+      const lengthValidation = validateLength(name, 2, 100, 'Name')
+      if (!lengthValidation.isValid) {
+        newErrors.name = lengthValidation.error
+      }
     }
+
+    // Validate email
+    const emailValidation = validateEmail(email)
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error
+    }
+
+    // Validate phone
+    const phoneValidation = validatePhone(phone)
+    if (!phoneValidation.isValid) {
+      newErrors.phone = phoneValidation.error
+    }
+
+    // Validate job title
+    const jobTitleValidation = validateRequired(jobTitle, 'Job title')
+    if (!jobTitleValidation.isValid) {
+      newErrors.jobTitle = jobTitleValidation.error
+    }
+
+    setErrors(newErrors)
+
+    // If there are errors, don't proceed
+    if (Object.keys(newErrors).length > 0) {
+      return
+    }
+
+    // All validations passed
+    createAccount(name, email, phone, jobTitle)
+    setShowCreateAccount(false)
+    setName('')
+    setEmail('')
+    setPhone('')
+    setJobTitle('')
+    setErrors({})
   }
 
   const handleCreateCompany = () => {
-    if (companyName) {
-      createCompany(companyName)
-      setShowCreateCompany(false)
-      setCompanyName('')
+    const newErrors: typeof errors = {}
+
+    // Validate company name
+    const nameValidation = validateRequired(companyName, 'Company name')
+    if (!nameValidation.isValid) {
+      newErrors.companyName = nameValidation.error
+    } else {
+      const lengthValidation = validateLength(companyName, 2, 100, 'Company name')
+      if (!lengthValidation.isValid) {
+        newErrors.companyName = lengthValidation.error
+      }
     }
+
+    setErrors(newErrors)
+
+    if (Object.keys(newErrors).length > 0) {
+      return
+    }
+
+    createCompany(companyName)
+    setShowCreateCompany(false)
+    setCompanyName('')
+    setErrors({})
   }
 
   const handleLinkCompany = () => {
-    if (linkCode) {
-      linkCompany(linkCode)
-      setShowLinkCompany(false)
-      setLinkCode('')
+    const newErrors: typeof errors = {}
+
+    // Validate company code format
+    const codeValidation = validateCompanyCode(linkCode.toUpperCase())
+    if (!codeValidation.isValid) {
+      newErrors.linkCode = codeValidation.error
     }
+
+    setErrors(newErrors)
+
+    if (Object.keys(newErrors).length > 0) {
+      return
+    }
+
+    linkCompany(linkCode.toUpperCase())
+    setShowLinkCompany(false)
+    setLinkCode('')
+    setErrors({})
   }
 
   const copyToClipboard = (text: string, type: 'member' | 'company') => {
@@ -141,28 +220,44 @@ export default function AccountMenu() {
                 <CardTitle>Create Account</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Input
-                  placeholder="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <Input
-                  type="tel"
-                  placeholder="Phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-                <Input
-                  placeholder="Job Title (e.g., Electrician, Owner)"
-                  value={jobTitle}
-                  onChange={(e) => setJobTitle(e.target.value)}
-                />
+                <div>
+                  <Input
+                    placeholder="Full Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={errors.name ? 'border-red-500' : ''}
+                  />
+                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                </div>
+                <div>
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={errors.email ? 'border-red-500' : ''}
+                  />
+                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                </div>
+                <div>
+                  <Input
+                    type="tel"
+                    placeholder="Phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={errors.phone ? 'border-red-500' : ''}
+                  />
+                  {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                </div>
+                <div>
+                  <Input
+                    placeholder="Job Title (e.g., Electrician, Owner)"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    className={errors.jobTitle ? 'border-red-500' : ''}
+                  />
+                  {errors.jobTitle && <p className="text-red-500 text-sm mt-1">{errors.jobTitle}</p>}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
@@ -303,11 +398,15 @@ export default function AccountMenu() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Input
-                  placeholder="Company Name"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                />
+                <div>
+                  <Input
+                    placeholder="Company Name"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className={errors.companyName ? 'border-red-500' : ''}
+                  />
+                  {errors.companyName && <p className="text-red-500 text-sm mt-1">{errors.companyName}</p>}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
@@ -348,11 +447,15 @@ export default function AccountMenu() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Input
-                  placeholder="Company Code (e.g., ELX-A3B)"
-                  value={linkCode}
-                  onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
-                />
+                <div>
+                  <Input
+                    placeholder="Company Code (e.g., ELX-A3B)"
+                    value={linkCode}
+                    onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
+                    className={errors.linkCode ? 'border-red-500' : ''}
+                  />
+                  {errors.linkCode && <p className="text-red-500 text-sm mt-1">{errors.linkCode}</p>}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"

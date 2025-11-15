@@ -8,7 +8,7 @@ import { ArrowLeft, Camera, Upload, Loader2, X } from 'lucide-react'
 import Image from 'next/image'
 
 export default function PhotoAnalysis() {
-  const { setCurrentSection, photos, addPhoto, updatePhotoAnalysis, removePhoto } = useAppStore()
+  const { setCurrentSection, photos, addPhoto, updatePhotoAnalysis, removePhoto, apiKeys, ownerSettings } = useAppStore()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -27,20 +27,23 @@ export default function PhotoAnalysis() {
     const photoId = Date.now().toString()
 
     try {
+      // Get API key from user settings or fallback to owner's default key
+      const anthropicKey = apiKeys.anthropic ||
+        (ownerSettings.provideDefaultKeys ? ownerSettings.defaultAnthropicKey : null)
+
       // Call API for analysis
       const response = await fetch('/api/photo/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageUrl,
-          apiKey: null, // TODO: Get from settings
+          apiKey: anthropicKey,
         }),
       })
 
       const data = await response.json()
       updatePhotoAnalysis(photoId, data.analysis)
     } catch (error) {
-      console.error('Analysis error:', error)
       updatePhotoAnalysis(photoId, 'Failed to analyze image. Please try again.')
     } finally {
       setIsAnalyzing(false)

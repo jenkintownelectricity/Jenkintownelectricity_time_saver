@@ -1,0 +1,90 @@
+-- ============================================================================
+-- Migration 003: Seed Data (OPTIONAL - for testing only)
+-- ============================================================================
+-- Demo data to test your application
+-- DO NOT run this in production!
+-- Only run if you want sample data to play with
+-- ============================================================================
+
+-- NOTE: This seed data assumes you have a test user already signed up
+-- Replace 'YOUR_USER_ID' with actual UUID from auth.users after signing up
+
+-- Example user profile (if not auto-created)
+-- INSERT INTO public.user_profiles (id, full_name, email, phone, role, onboarding_completed)
+-- VALUES (
+--   'YOUR_USER_ID',  -- Replace with actual auth.users ID
+--   'John Electrician',
+--   'john@example.com',
+--   '555-0123',
+--   'owner',
+--   true
+-- );
+
+-- Demo company
+-- INSERT INTO public.companies (id, name, code, owner_id)
+-- VALUES (
+--   gen_random_uuid(),
+--   'Elite Electric Co.',
+--   'ELT-001',
+--   'YOUR_USER_ID'  -- Replace with actual user ID
+-- );
+
+-- Demo contacts with MULTIPLE roles
+-- INSERT INTO public.contacts (
+--   user_id, company_id, name, email, phone,
+--   is_client, is_vendor, is_contractor_1099,
+--   custom_fields
+-- ) VALUES
+-- (
+--   'YOUR_USER_ID',
+--   (SELECT id FROM public.companies WHERE code = 'ELT-001'),
+--   'ABC Construction',
+--   'abc@construction.com',
+--   '555-0100',
+--   true,   -- Client
+--   true,   -- Also a vendor!
+--   false,
+--   '{"preferred_payment": "NET30", "project_manager": "Sarah"}'
+-- ),
+-- (
+--   'YOUR_USER_ID',
+--   (SELECT id FROM public.companies WHERE code = 'ELT-001'),
+--   'Mike Contractor',
+--   'mike@contractor.com',
+--   '555-0200',
+--   false,
+--   false,
+--   true,   -- 1099 Contractor
+--   '{"specialty": "residential", "rate": 75.00}'
+-- );
+
+-- Demo financial documents
+-- INSERT INTO public.financial_documents (
+--   user_id, company_id, contact_id,
+--   document_type, document_number, title,
+--   subtotal, tax_rate, tax_amount, total,
+--   line_items
+-- ) VALUES
+-- (
+--   'YOUR_USER_ID',
+--   (SELECT id FROM public.companies WHERE code = 'ELT-001'),
+--   (SELECT id FROM public.contacts WHERE email = 'abc@construction.com'),
+--   'invoice',
+--   'INV-001',
+--   'Electrical Panel Upgrade',
+--   1200.00,
+--   0.08,
+--   96.00,
+--   1296.00,
+--   '[
+--     {"description": "200A Panel", "quantity": 1, "unit_price": 800.00, "total": 800.00},
+--     {"description": "Labor (4 hours)", "quantity": 4, "unit_price": 100.00, "total": 400.00}
+--   ]'::jsonb
+-- );
+
+-- ============================================================================
+-- SEED DATA INFO
+-- ============================================================================
+-- Uncomment the sections above and replace 'YOUR_USER_ID' with real values
+-- You can find user IDs in: Supabase Dashboard > Authentication > Users
+-- ============================================================================

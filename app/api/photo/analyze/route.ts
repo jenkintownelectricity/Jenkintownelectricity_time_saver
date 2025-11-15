@@ -11,9 +11,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Replace with actual Claude API integration
-    // This is a placeholder that simulates the API call
-    // User will need to provide their Anthropic API key
+    // PLACEHOLDER: Actual Claude API integration is commented out below
+    // This placeholder returns a simulated response
+    // Uncomment the API call code and provide an Anthropic API key to enable real analysis
     
     // Simulated analysis for now
     const placeholderAnalysis = `
@@ -64,12 +64,12 @@ To enable real analysis, add your Anthropic API key in the settings.
     const analysis = data.content[0].text
     */
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       analysis: placeholderAnalysis,
-      placeholder: true 
+      placeholder: true
     })
   } catch (error) {
-    console.error('Photo analysis error:', error)
+    // In production, log to error tracking service
     return NextResponse.json(
       { error: 'Failed to analyze photo' },
       { status: 500 }

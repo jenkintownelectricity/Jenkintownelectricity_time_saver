@@ -20,6 +20,7 @@ import {
   Phone,
   Copy,
   Building2,
+  Check,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CallType, WorkCall } from '@/lib/store'
@@ -40,6 +41,7 @@ export default function WorkCallBidding() {
     setOnCall,
     expireOldCalls,
     updateCompanySettings,
+    linkCompany,
   } = useAppStore()
 
   const [showCreateCall, setShowCreateCall] = useState(false)
@@ -50,12 +52,15 @@ export default function WorkCallBidding() {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [bidTime, setBidTime] = useState('')
-  const [, setTick] = useState(0)
+  const [tick, setTick] = useState(0)
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [showBrowseCompanies, setShowBrowseCompanies] = useState(false)
+  const [connectionRequest, setConnectionRequest] = useState('')
 
   const currentCompany = companies.find((c) => c.code === currentCompanyCode)
 
-  // Auto-expire old calls every second
+  // Auto-expire old calls and update countdown timers every second
+  // Note: This could be optimized by using individual timers per call or requestAnimationFrame
   useEffect(() => {
     const interval = setInterval(() => {
       expireOldCalls()
@@ -127,6 +132,108 @@ export default function WorkCallBidding() {
       case 'scheduled':
         return <Calendar className="w-5 h-5 text-blue-500" />
     }
+  }
+
+  /**
+   * Export billing data to CSV file
+   */
+  const handleExportBillingData = () => {
+    const csvData = [
+      ['Metric', 'Value'],
+      ['Total Calls', callStats.totalCalls.toString()],
+      ['Claimed Calls', callStats.claimedCalls.toString()],
+      ['Expired Calls', callStats.expiredCalls.toString()],
+      ['Total Bonuses Earned', `$${callStats.totalBonusEarned}`],
+      ['Average Response Time', `${callStats.averageResponseTime.toFixed(1)}s`],
+      ['Success Rate', callStats.totalCalls > 0 ? `${((callStats.claimedCalls / callStats.totalCalls) * 100).toFixed(0)}%` : '0%'],
+      ['Emergency Calls', workCalls.filter(c => c.type === 'emergency').length.toString()],
+      ['Daytime Calls', workCalls.filter(c => c.type === 'daytime').length.toString()],
+      ['Scheduled Calls', workCalls.filter(c => c.type === 'scheduled').length.toString()],
+    ]
+
+    const csvContent = csvData.map(row => row.join(',')).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `billing-data-${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+  }
+
+  /**
+   * Demo data: Available companies in the marketplace
+   * In production, this would fetch from a database
+   */
+  const availableCompanies = [
+    { code: 'ELC-123', name: 'Elite Electric Co.', location: 'Philadelphia, PA', members: 12, rating: 4.8 },
+    { code: 'PWR-456', name: 'PowerLine Pros', location: 'New York, NY', members: 8, rating: 4.6 },
+    { code: 'VLT-789', name: 'Voltage Experts', location: 'Boston, MA', members: 15, rating: 4.9 },
+    { code: 'AMP-321', name: 'Ampere Services', location: 'Baltimore, MD', members: 6, rating: 4.5 },
+    { code: 'CRT-654', name: 'Circuit Masters', location: 'Washington, DC', members: 10, rating: 4.7 },
+  ].filter(company =>
+    // Filter out already linked companies and current company
+    !currentCompany?.linkedCompanies.includes(company.code) &&
+    company.code !== currentCompanyCode
+  )
+
+  /**
+   * Send connection request to another company
+   */
+  const handleSendConnectionRequest = (companyCode: string) => {
+    // In production, this would send a request to the backend
+    // For now, we'll just automatically link the company
+    if (currentCompany?.code) {
+      linkCompany(companyCode)
+      setConnectionRequest(companyCode)
+      setTimeout(() => setConnectionRequest(''), 3000)
+    }
+  }
+
+  /**
+   * Download detailed usage report as text file
+   */
+  const handleDownloadReport = () => {
+    const report = `
+WORK CALL BIDDING - USAGE REPORT
+Generated: ${new Date().toLocaleString()}
+Company: ${currentCompany?.name || 'N/A'}
+
+========================================
+SUMMARY STATISTICS
+========================================
+Total Calls Created: ${callStats.totalCalls}
+Successfully Claimed: ${callStats.claimedCalls}
+Expired Calls: ${callStats.expiredCalls}
+Total Bonuses Earned: $${callStats.totalBonusEarned}
+Average Response Time: ${callStats.averageResponseTime.toFixed(1)} seconds
+Success Rate: ${callStats.totalCalls > 0 ? ((callStats.claimedCalls / callStats.totalCalls) * 100).toFixed(0) : 0}%
+
+========================================
+CALL TYPE BREAKDOWN
+========================================
+Emergency Calls: ${workCalls.filter(c => c.type === 'emergency').length} ($${currentCompany?.settings.emergencyBonus || 0} each)
+Daytime Calls: ${workCalls.filter(c => c.type === 'daytime').length} ($${currentCompany?.settings.daytimeBonus || 0} each)
+Scheduled Calls: ${workCalls.filter(c => c.type === 'scheduled').length} ($${currentCompany?.settings.scheduledBonus || 0} each)
+
+========================================
+CALL HISTORY
+========================================
+${workCalls.slice(0, 20).map(call => `
+- ${call.title}
+  Type: ${call.type.toUpperCase()}
+  Status: ${call.status.toUpperCase()}
+  Bonus: $${call.bonus}
+  Created: ${new Date(call.createdAt).toLocaleString()}
+  ${call.claimedBy ? `Claimed by: ${call.claimedBy}` : ''}
+`).join('\n')}
+
+${workCalls.length > 20 ? `\n... and ${workCalls.length - 20} more calls` : ''}
+    `.trim()
+
+    const blob = new Blob([report], { type: 'text/plain;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `usage-report-${new Date().toISOString().split('T')[0]}.txt`
+    link.click()
   }
 
   const getCallBadgeColor = (type: CallType): "destructive" | "default" | "outline" => {
@@ -601,6 +708,26 @@ export default function WorkCallBidding() {
                     </div>
                   </div>
                 </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleExportBillingData}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Export to CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleDownloadReport}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Download Report
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -705,18 +832,94 @@ export default function WorkCallBidding() {
                   <p className="text-sm text-muted-foreground mb-3">
                     Your company code: <strong>{currentCompany?.code}</strong>
                   </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (currentCompany?.code) {
-                        navigator.clipboard.writeText(currentCompany.code)
-                      }
-                    }}
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Company Code to Share
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (currentCompany?.code) {
+                          navigator.clipboard.writeText(currentCompany.code)
+                        }
+                      }}
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy Company Code
+                    </Button>
+                    <Button
+                      onClick={() => setShowBrowseCompanies(!showBrowseCompanies)}
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      {showBrowseCompanies ? 'Hide' : 'Browse'} Companies
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Browse Companies Section */}
+                {showBrowseCompanies && (
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-medium">Available Companies to Connect</h3>
+                      <Badge variant="outline">{availableCompanies.length} found</Badge>
+                    </div>
+                    {availableCompanies.length > 0 ? (
+                      <div className="space-y-3">
+                        {availableCompanies.map((company) => (
+                          <div
+                            key={company.code}
+                            className="p-4 border border-border rounded-lg hover:border-primary/50 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Building2 className="w-5 h-5 text-primary" />
+                                  <h4 className="font-semibold">{company.name}</h4>
+                                  <Badge variant="outline" className="text-xs">
+                                    {company.code}
+                                  </Badge>
+                                </div>
+                                <div className="space-y-1 text-sm text-muted-foreground">
+                                  <p className="flex items-center gap-2">
+                                    📍 {company.location}
+                                  </p>
+                                  <p className="flex items-center gap-2">
+                                    👥 {company.members} team members
+                                  </p>
+                                  <p className="flex items-center gap-2">
+                                    ⭐ {company.rating.toFixed(1)} rating
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                onClick={() => handleSendConnectionRequest(company.code)}
+                                disabled={connectionRequest === company.code}
+                                className="ml-4"
+                              >
+                                {connectionRequest === company.code ? (
+                                  <>
+                                    <Check className="w-4 h-4 mr-2" />
+                                    Connected!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Connect
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border border-dashed border-border rounded-lg">
+                        <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground">
+                          You're already connected to all available companies!
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
