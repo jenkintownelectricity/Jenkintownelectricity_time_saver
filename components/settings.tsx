@@ -177,10 +177,10 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* TODO: Update integrations tab with research-based priorities
-          - Phase 1: QuickBooks, Google Calendar, Stripe, Gmail
-          - Phase 2: Zapier, Mailchimp, Google Drive
-          - Phase 3: Slack, MS Teams, NiceJob, Broadly
+      {/* Integration priorities based on contractor research:
+          - Phase 1 (Core): QuickBooks, Google Calendar, Stripe, Gmail
+          - Phase 2 (Growth): Zapier, Mailchimp, Google Drive
+          - Phase 3 (Team): Slack, MS Teams, NiceJob, Broadly
       */}
 
       {/* Zapier Integration */}

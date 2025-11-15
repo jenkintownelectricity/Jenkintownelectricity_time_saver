@@ -128,7 +128,8 @@ export default function JobsBusiness() {
 
   const handleEntityClick = (entityId: string) => {
     setCurrentEntityView(entityId)
-    // TODO: Navigate to entity list view
+    // Note: Entity list view will be implemented when database backend is added
+    // For now, this sets the current entity view in the store
   }
 
   return (

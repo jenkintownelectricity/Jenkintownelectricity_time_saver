@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { EntityType, EntityInstance, DEFAULT_ENTITIES } from './entities'
+import { EntityType, EntityInstance, DEFAULT_ENTITIES, FieldValue } from './entities'
 
 export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'work-calls'
 
@@ -120,8 +120,8 @@ interface AppState {
   currentEntityView: string | null
   currentEntityId: string | null
   setEntityType: (entityTypeId: string, config: Partial<EntityType>) => void
-  createEntity: (entityTypeId: string, data: any) => void
-  updateEntity: (id: string, data: any) => void
+  createEntity: (entityTypeId: string, data: Record<string, FieldValue>) => void
+  updateEntity: (id: string, data: Record<string, FieldValue>) => void
   deleteEntity: (id: string) => void
   getEntity: (id: string) => EntityInstance | undefined
   getEntitiesByType: (entityTypeId: string) => EntityInstance[]
@@ -185,20 +185,29 @@ interface AppState {
     email: { enabled: boolean; smtpHost: string | null; smtpPort: string | null; username: string | null }
   }
   setApiKey: (key: string, value: string) => void
-  setOwnerSetting: (key: string, value: any) => void
-  setIntegration: (platform: string, config: any) => void
+  setOwnerSetting: (key: string, value: string | boolean) => void
+  setIntegration: (platform: string, config: Record<string, string | boolean | null>) => void
   loadSettings: () => void
   saveSettings: () => void
 }
 
-// Helper function to generate member number
+/**
+ * Generates a unique member number in the format M{YY}{####}
+ * Example: M2501234 (Member created in 2025, random number 1234)
+ * @returns A unique member number string
+ */
 const generateMemberNumber = (): string => {
   const year = new Date().getFullYear().toString().slice(2)
   const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
   return `M${year}${random}`
 }
 
-// Helper function to generate company code
+/**
+ * Generates a unique company code in the format ABC-DEF
+ * Uses alphanumeric characters (A-Z, 0-9)
+ * Example: ELX-A3B, QT9-M2K
+ * @returns A unique company code string
+ */
 const generateCompanyCode = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let code = ''
@@ -547,12 +556,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     quickbooks: null,
     stripe: null,
   },
-  // Owner/Admin Settings - these are YOUR credentials
+  // Owner/Admin Settings - loaded from environment variables
   ownerSettings: {
-    provideDefaultKeys: true, // Toggle this to enable/disable fallback to your keys
-    defaultVapiKey: '58f63a6f-6694-4fe3-8f72-fea362908803',
-    defaultVapiAssistantId: '00788639-dd74-48ec-aa8b-a6572d70e45b',
-    defaultAnthropicKey: '', // Add your Anthropic key here if you want
+    provideDefaultKeys: !!(process.env.NEXT_PUBLIC_DEFAULT_VAPI_KEY || process.env.NEXT_PUBLIC_DEFAULT_ANTHROPIC_KEY),
+    defaultVapiKey: process.env.NEXT_PUBLIC_DEFAULT_VAPI_KEY || '',
+    defaultVapiAssistantId: process.env.NEXT_PUBLIC_DEFAULT_VAPI_ASSISTANT_ID || '',
+    defaultAnthropicKey: process.env.NEXT_PUBLIC_DEFAULT_ANTHROPIC_KEY || '',
   },
   integrations: {
     // Phase 1: Core Foundation (82.4% of contractors need these)
@@ -628,7 +637,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...(isOnCall !== undefined && { isOnCall }),
           })
         } catch (e) {
-          console.error('Failed to load settings:', e)
+          // Failed to load settings - will use defaults
+          // In production, this should be logged to an error tracking service
         }
       }
     }

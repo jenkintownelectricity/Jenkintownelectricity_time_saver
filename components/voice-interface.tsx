@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Mic, PhoneOff, Loader2 } from 'lucide-react'
+import type { VapiMessage, VapiError } from '@/lib/types/vapi'
 
 export default function VoiceInterface() {
   const { setCurrentSection, voiceCall, startVoiceCall, endVoiceCall, addTranscript, apiKeys, ownerSettings } = useAppStore()
@@ -57,29 +58,25 @@ export default function VoiceInterface() {
 
         // Set up event handlers
         vapiRef.current.on('call-start', () => {
-          console.log('Call started')
           startVoiceCall()
           setIsInitializing(false)
           addTranscript('System: Call connected with Fabio')
         })
 
         vapiRef.current.on('call-end', () => {
-          console.log('Call ended')
           endVoiceCall()
           addTranscript('System: Call ended')
         })
 
         vapiRef.current.on('speech-start', () => {
-          console.log('Assistant started speaking')
+          // Speech started - no action needed
         })
 
         vapiRef.current.on('speech-end', () => {
-          console.log('Assistant stopped speaking')
+          // Speech ended - no action needed
         })
 
-        vapiRef.current.on('message', (message: any) => {
-          console.log('Message received:', message)
-
+        vapiRef.current.on('message', (message: VapiMessage) => {
           // Handle transcript messages
           if (message.type === 'transcript' && message.transcriptType === 'final') {
             const role = message.role === 'user' ? 'You' : 'Fabio'
@@ -87,8 +84,7 @@ export default function VoiceInterface() {
           }
         })
 
-        vapiRef.current.on('error', (error: any) => {
-          console.error('VAPI error:', error)
+        vapiRef.current.on('error', (error: VapiError) => {
           addTranscript(`System: Error - ${error.message || 'Connection failed'}`)
           setIsInitializing(false)
           endVoiceCall()
@@ -98,9 +94,9 @@ export default function VoiceInterface() {
       // Start the call with Fabio assistant
       await vapiRef.current.start(assistantId)
 
-    } catch (error: any) {
-      console.error('Failed to start call:', error)
-      addTranscript(`System: Failed to start call - ${error.message || 'Unknown error'}`)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      addTranscript(`System: Failed to start call - ${errorMessage}`)
       setIsInitializing(false)
       endVoiceCall()
     }

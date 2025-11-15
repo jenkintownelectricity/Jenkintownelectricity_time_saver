@@ -3,6 +3,9 @@
 
 export type FieldType = 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'textarea' | 'email' | 'phone' | 'currency' | 'percentage' | 'file' | 'reference'
 
+// Type for field values based on FieldType
+export type FieldValue = string | number | boolean | Date | string[] | null | undefined
+
 export interface EntityField {
   id: string
   name: string
@@ -12,7 +15,7 @@ export interface EntityField {
   enabled: boolean
   options?: string[] // For select/multiselect
   referenceEntity?: string // For reference fields (e.g., 'customer', 'job')
-  defaultValue?: any
+  defaultValue?: FieldValue
   validation?: {
     min?: number
     max?: number
@@ -65,7 +68,7 @@ export interface EntityInstance {
   createdBy?: string
   status: string
   data: {
-    [fieldId: string]: any
+    [fieldId: string]: FieldValue
   }
   relationships: {
     [relationshipId: string]: string[] // Array of related entity IDs
@@ -99,8 +102,8 @@ export interface HistoryEntry {
   userName: string
   action: string
   field?: string
-  oldValue?: any
-  newValue?: any
+  oldValue?: FieldValue
+  newValue?: FieldValue
   timestamp: number
 }
 

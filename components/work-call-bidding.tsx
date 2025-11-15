@@ -50,12 +50,13 @@ export default function WorkCallBidding() {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [bidTime, setBidTime] = useState('')
-  const [, setTick] = useState(0)
+  const [tick, setTick] = useState(0)
   const [activeTab, setActiveTab] = useState('dashboard')
 
   const currentCompany = companies.find((c) => c.code === currentCompanyCode)
 
-  // Auto-expire old calls every second
+  // Auto-expire old calls and update countdown timers every second
+  // Note: This could be optimized by using individual timers per call or requestAnimationFrame
   useEffect(() => {
     const interval = setInterval(() => {
       expireOldCalls()

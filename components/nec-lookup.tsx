@@ -26,7 +26,8 @@ export default function NECLookup() {
       const data = await response.json()
       setResults(data.codes || [])
     } catch (error) {
-      console.error('Search error:', error)
+      // Handle search error - could show user notification here
+      setResults([])
     } finally {
       setIsLoading(false)
     }
