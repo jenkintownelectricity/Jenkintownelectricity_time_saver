@@ -287,12 +287,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   })),
   createEntity: (entityTypeId, data) => set((state) => {
+    const statusField = state.entityTypes[entityTypeId]?.fields.find(f => f.name === 'status')
+    const statusValue = typeof statusField?.defaultValue === 'string' ? statusField.defaultValue : 'active'
+
     const newEntity: EntityInstance = {
       id: `${entityTypeId}_${Date.now()}`,
       entityType: entityTypeId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      status: state.entityTypes[entityTypeId]?.fields.find(f => f.name === 'status')?.defaultValue || 'active',
+      status: statusValue,
       data,
       relationships: {}
     }
