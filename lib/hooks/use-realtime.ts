@@ -22,7 +22,7 @@ export function useRealtimeSubscriptions() {
     // Subscribe to work calls changes
     const workCallsChannel = supabase
       .channel('work_calls_changes')
-      .on<parameter name="file_path">('postgres_changes' as const, {
+      .on('postgres_changes' as const, {
         event: '*',
         schema: 'public',
         table: 'work_calls',
