@@ -21,6 +21,8 @@ import AccountMenu from '@/components/account-menu'
 import CallBidding from '@/components/call-bidding'
 import BillingDashboard from '@/components/billing-dashboard'
 import NetworkMarketplace from '@/components/network-marketplace'
+import CompanySwitcher from '@/components/company-switcher'
+import CompanyManagement from '@/components/company-management'
 import { useEffect } from 'react'
 
 export default function Home() {
@@ -86,6 +88,10 @@ export default function Home() {
     return <NetworkMarketplace />
   }
 
+  if (currentSection === 'company-management') {
+    return <CompanyManagement />
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -109,8 +115,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Account Menu in Top Right */}
-            <AccountMenu />
+            <div className="flex items-center gap-3">
+              {/* Company Switcher */}
+              <CompanySwitcher />
+
+              {/* Account Menu */}
+              <AccountMenu />
+            </div>
           </div>
         </div>
       </header>

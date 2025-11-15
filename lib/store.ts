@@ -4,7 +4,7 @@ import { TaxDocument, TaxPackage, getQuarterFromDate } from './tax-documents'
 import { EstimateDocument, WorkOrderDocument, InvoiceDocument, calculateDocumentTotals } from './line-items'
 import { CompanyProfile, createDefaultCompanyProfile, generateDocumentNumber, incrementDocumentCounter } from './company-profiles'
 
-export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices' | 'call-bidding' | 'billing' | 'network-marketplace'
+export type AppSection = 'home' | 'voice' | 'photo' | 'nec' | 'jobs' | 'settings' | 'get-paid' | 'get-reviews' | 'my-contractors' | 'tax-manager' | 'estimates' | 'work-orders' | 'invoices' | 'call-bidding' | 'billing' | 'network-marketplace' | 'company-management'
 
 export interface VoiceCallState {
   isActive: boolean
