@@ -106,6 +106,15 @@ export default function SignupPage() {
           return
         }
 
+        // Seed demo data for new user
+        try {
+          const { seedDemoData } = await import('@/lib/database/seed-demo-data')
+          await seedDemoData()
+        } catch (seedError) {
+          console.error('Failed to seed demo data:', seedError)
+          // Don't fail signup if demo data fails
+        }
+
         // Success!
         setSuccess(true)
         setLoading(false)
