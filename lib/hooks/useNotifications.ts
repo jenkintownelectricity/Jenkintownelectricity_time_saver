@@ -43,7 +43,7 @@ export function useNotifications(userId: string | null) {
       }
 
       // Get unread count
-      const count = await getUnreadNotificationsCount(userId)
+      const count = await getUnreadNotificationsCount(userId!)
       setUnreadCount(count)
 
       setLoading(false)
