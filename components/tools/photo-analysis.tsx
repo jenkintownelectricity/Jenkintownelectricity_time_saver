@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -77,7 +77,9 @@ export default function PhotoAnalysis() {
           }
           const updatedLibrary = [newPhoto, ...photoLibrary].slice(0, 20) // Keep last 20
           setPhotoLibrary(updatedLibrary)
-          localStorage.setItem('photo-library', JSON.stringify(updatedLibrary))
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('photo-library', JSON.stringify(updatedLibrary))
+          }
         }
 
         setIsAnalyzing(false)
@@ -116,16 +118,18 @@ export default function PhotoAnalysis() {
   }
 
   // Load library on mount
-  useState(() => {
-    const saved = localStorage.getItem('photo-library')
-    if (saved) {
-      try {
-        setPhotoLibrary(JSON.parse(saved))
-      } catch (e) {
-        // Invalid data
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('photo-library')
+      if (saved) {
+        try {
+          setPhotoLibrary(JSON.parse(saved))
+        } catch (e) {
+          // Invalid data
+        }
       }
     }
-  })
+  }, [])
 
   return (
     <div className="space-y-6">

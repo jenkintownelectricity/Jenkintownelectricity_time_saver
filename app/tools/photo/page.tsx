@@ -5,6 +5,8 @@ import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import PhotoAnalysis from '@/components/tools/photo-analysis'
 
+export const dynamic = 'force-dynamic'
+
 export default function PhotoToolPage() {
   const router = useRouter()
 

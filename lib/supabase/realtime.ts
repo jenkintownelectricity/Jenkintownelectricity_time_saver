@@ -1,4 +1,4 @@
-import { supabase } from './client'
+import { createClient } from './client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
 /**
@@ -10,6 +10,7 @@ export function subscribeToWorkCalls(
   onNewCall: (call: any) => void,
   onCallClaimed: (call: any) => void
 ): RealtimeChannel {
+  const supabase = createClient()
   const channel = supabase
     .channel(`work_calls:${companyCode}`)
     .on(
@@ -53,6 +54,7 @@ export function subscribeToNotifications(
   userId: string,
   onNewNotification: (notification: any) => void
 ): RealtimeChannel {
+  const supabase = createClient()
   const channel = supabase
     .channel(`notifications:${userId}`)
     .on(
@@ -80,6 +82,7 @@ export function subscribeToInvoiceUpdates(
   userId: string,
   onInvoiceUpdate: (invoice: any) => void
 ): RealtimeChannel {
+  const supabase = createClient()
   const channel = supabase
     .channel(`invoices:${userId}`)
     .on(
@@ -109,6 +112,7 @@ export function subscribeToTeamPresence(
   companyId: string,
   onPresenceUpdate: (presences: any) => void
 ): RealtimeChannel {
+  const supabase = createClient()
   const channel = supabase
     .channel(`presence:${companyId}`, {
       config: {
@@ -145,6 +149,7 @@ export async function trackPresence(
  * Unsubscribe from a channel
  */
 export async function unsubscribe(channel: RealtimeChannel) {
+  const supabase = createClient()
   await supabase.removeChannel(channel)
 }
 
@@ -152,5 +157,6 @@ export async function unsubscribe(channel: RealtimeChannel) {
  * Unsubscribe from all channels
  */
 export async function unsubscribeAll() {
+  const supabase = createClient()
   await supabase.removeAllChannels()
 }
