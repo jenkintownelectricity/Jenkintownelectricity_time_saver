@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { subscribeToNotifications, unsubscribe } from '@/lib/supabase/realtime'
 import { getUnreadNotificationsCount, markNotificationRead } from '@/lib/supabase/queries'
 import { RealtimeChannel } from '@supabase/supabase-js'
@@ -19,6 +19,8 @@ export function useNotifications(userId: string | null) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [channel, setChannel] = useState<RealtimeChannel | null>(null)
+
+  const supabase = createClient()
 
   // Fetch initial notifications
   useEffect(() => {
