@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Photo Analysis API Route
+ * Integrates with Anthropic Claude API to analyze construction photos
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { imageUrl, apiKey } = await request.json()
+    const body = await request.json()
+    const { imageData, apiKey } = body
+
+    if (!imageData) {
+      return NextResponse.json(
+        { error: 'Image data is required' },
+        { status: 400 }
+      )
+    }
 
     if (!apiKey) {
       return NextResponse.json(
@@ -11,67 +23,76 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // PLACEHOLDER: Actual Claude API integration is commented out below
-    // This placeholder returns a simulated response
-    // Uncomment the API call code and provide an Anthropic API key to enable real analysis
-    
-    // Simulated analysis for now
-    const placeholderAnalysis = `
-🔌 Photo Analysis (Placeholder - Add your Anthropic API key to enable real analysis)
+    // Extract base64 data and media type
+    const matches = imageData.match(/^data:(.+);base64,(.+)$/)
+    if (!matches) {
+      return NextResponse.json(
+        { error: 'Invalid image data format' },
+        { status: 400 }
+      )
+    }
 
-This will analyze:
-- Wire gauge and type identification
-- Panel reading and labeling
-- NEC code compliance
-- Safety concerns
-- Installation quality
+    const mediaType = matches[1]
+    const base64Data = matches[2]
 
-To enable real analysis, add your Anthropic API key in the settings.
-    `.trim()
-
-    // When implementing with actual API:
-    /*
+    // Call Anthropic Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'url',
-                url: imageUrl
-              }
-            },
-            {
-              type: 'text',
-              text: 'As an expert electrician assistant, analyze this electrical installation photo. Identify wire types, gauges, check for code compliance, note any safety concerns, and provide professional recommendations.'
-            }
-          ]
-        }]
-      })
-    })
-    
-    const data = await response.json()
-    const analysis = data.content[0].text
-    */
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: base64Data,
+                },
+              },
+              {
+                type: 'text',
+                text: `You are an expert electrician and construction inspector. Analyze this photo and provide a detailed assessment covering:
 
-    return NextResponse.json({
-      analysis: placeholderAnalysis,
-      placeholder: true
+1. **Wire Gauge Identification**: Identify any visible wire gauges and types
+2. **Panel Reading**: Read any panel labels, breaker ratings, or specifications visible
+3. **Code Compliance**: Check for any NEC (National Electrical Code) compliance issues
+4. **Safety Concerns**: Identify any immediate safety hazards or concerns
+5. **Installation Quality**: Assess the quality and workmanship of the installation
+6. **Recommendations**: Provide specific recommendations for improvements or corrections
+
+Be thorough, specific, and professional. If you cannot see certain details clearly, mention this limitation.`,
+              },
+            ],
+          },
+        ],
+      }),
     })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      return NextResponse.json(
+        { error: errorData.error?.message || 'Failed to analyze image' },
+        { status: response.status }
+      )
+    }
+
+    const data = await response.json()
+    const analysis = data.content?.[0]?.text || 'No analysis generated'
+
+    return NextResponse.json({ analysis })
   } catch (error) {
-    // In production, log to error tracking service
+    console.error('Photo analysis error:', error)
     return NextResponse.json(
-      { error: 'Failed to analyze photo' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
