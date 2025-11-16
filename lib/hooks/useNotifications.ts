@@ -19,8 +19,7 @@ export function useNotifications(userId: string | null) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [channel, setChannel] = useState<RealtimeChannel | null>(null)
-
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
 
   // Fetch initial notifications
   useEffect(() => {
