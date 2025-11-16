@@ -161,6 +161,24 @@ interface AppState {
     defaultVapiAssistantId: string
     defaultAnthropicKey: string
   }
+  // Feature Toggles
+  features: {
+    receiptsEnabled: boolean
+    taxComplianceEnabled: boolean
+    teamManagementEnabled: boolean
+    companyManagementEnabled: boolean
+    vapiCallsEnabled: boolean
+    appointmentsEnabled: boolean
+    photoAnalysisEnabled: boolean
+    necLookupEnabled: boolean
+    voiceAssistantEnabled: boolean
+    estimatesEnabled: boolean
+    workOrdersEnabled: boolean
+    invoicesEnabled: boolean
+    analyticsEnabled: boolean
+    customerPortalEnabled: boolean
+  }
+  setFeature: (feature: string, enabled: boolean) => void
   integrations: {
     // Phase 1: Core Foundation (Based on customer research - absolute priorities)
     quickbooks: { enabled: boolean; companyId: string | null; accessToken: string | null; refreshToken: string | null; realmId: string | null }
@@ -566,6 +584,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     defaultVapiAssistantId: process.env.NEXT_PUBLIC_DEFAULT_VAPI_ASSISTANT_ID || '',
     defaultAnthropicKey: process.env.NEXT_PUBLIC_DEFAULT_ANTHROPIC_KEY || '',
   },
+  // Feature Toggles
+  features: {
+    receiptsEnabled: true,
+    taxComplianceEnabled: true,
+    teamManagementEnabled: true,
+    companyManagementEnabled: true,
+    vapiCallsEnabled: true,
+    appointmentsEnabled: true,
+    photoAnalysisEnabled: true,
+    necLookupEnabled: true,
+    voiceAssistantEnabled: true,
+    estimatesEnabled: true,
+    workOrdersEnabled: true,
+    invoicesEnabled: true,
+    analyticsEnabled: true,
+    customerPortalEnabled: true,
+  },
   integrations: {
     // Phase 1: Core Foundation (82.4% of contractors need these)
     quickbooks: { enabled: false, companyId: null, accessToken: null, refreshToken: null, realmId: null },
@@ -619,17 +654,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().saveSettings()
     }, 0)
   },
+  setFeature: (feature, enabled) => {
+    set((state) => ({
+      features: { ...state.features, [feature]: enabled }
+    }))
+    // Auto-save to localStorage
+    setTimeout(() => {
+      get().saveSettings()
+    }, 0)
+  },
   loadSettings: () => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('appio-settings')
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
-          const { apiKeys, integrations, ownerSettings, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall } = parsed
+          const { apiKeys, integrations, ownerSettings, features, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall } = parsed
           set({
             apiKeys,
             integrations,
             ...(ownerSettings && { ownerSettings }),
+            ...(features && { features }),
             ...(entities && { entities }),
             ...(entityTypes && { entityTypes }),
             ...(userAccount && { userAccount }),
@@ -648,8 +693,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   saveSettings: () => {
     if (typeof window !== 'undefined') {
-      const { apiKeys, integrations, ownerSettings, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall } = get()
-      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall }))
+      const { apiKeys, integrations, ownerSettings, features, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall } = get()
+      localStorage.setItem('appio-settings', JSON.stringify({ apiKeys, integrations, ownerSettings, features, entities, entityTypes, userAccount, companies, currentCompanyCode, workCalls, callStats, isOnCall }))
     }
   },
 }))
