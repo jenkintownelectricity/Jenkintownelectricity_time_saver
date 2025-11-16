@@ -1,4 +1,4 @@
-import { supabase } from './client'
+import { createClient } from './client'
 
 /**
  * Supabase Storage Buckets Configuration
@@ -34,6 +34,7 @@ export async function uploadFile(
     upsert?: boolean
   }
 ) {
+  const supabase = createClient()
   const { data, error } = await supabase.storage
     .from(bucket)
     .upload(path, file, {
@@ -53,6 +54,7 @@ export async function uploadFile(
  * Get public URL for a file
  */
 export function getPublicUrl(bucket: string, path: string): string {
+  const supabase = createClient()
   const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl
 }
@@ -65,6 +67,7 @@ export async function getSignedUrl(
   path: string,
   expiresIn: number = 3600
 ) {
+  const supabase = createClient()
   const { data, error } = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, expiresIn)
@@ -81,6 +84,7 @@ export async function getSignedUrl(
  * Delete a file from storage
  */
 export async function deleteFile(bucket: string, path: string) {
+  const supabase = createClient()
   const { error } = await supabase.storage.from(bucket).remove([path])
 
   if (error) {
@@ -170,6 +174,7 @@ export async function uploadLogo(
  * List all files in a user's folder
  */
 export async function listUserFiles(bucket: string, userId: string) {
+  const supabase = createClient()
   const { data, error } = await supabase.storage
     .from(bucket)
     .list(userId, {

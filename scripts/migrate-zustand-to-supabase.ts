@@ -5,7 +5,7 @@
  * Run this once per user to move from client-side to server-side storage.
  */
 
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { logActivity } from '@/lib/supabase/queries'
 
 interface MigrationResult {
@@ -23,6 +23,7 @@ export async function migrateZustandToSupabase(): Promise<{
   totalMigrated: number
   totalErrors: number
 }> {
+  const supabase = createClient()
   const results: MigrationResult[] = []
   let totalMigrated = 0
   let totalErrors = 0
@@ -47,7 +48,7 @@ export async function migrateZustandToSupabase(): Promise<{
 
     // 1. Migrate User Account → user_profiles
     if (parsed.userAccount) {
-      const accountResult = await migrateUserAccount(user.id, parsed.userAccount)
+      const accountResult = await migrateUserAccount(supabase, user.id, parsed.userAccount)
       results.push(accountResult)
       if (accountResult.success) totalMigrated += accountResult.count
       else totalErrors += accountResult.errors.length
@@ -55,7 +56,7 @@ export async function migrateZustandToSupabase(): Promise<{
 
     // 2. Migrate Companies → companies table
     if (parsed.companies && Array.isArray(parsed.companies)) {
-      const companiesResult = await migrateCompanies(user.id, parsed.companies)
+      const companiesResult = await migrateCompanies(supabase, user.id, parsed.companies)
       results.push(companiesResult)
       if (companiesResult.success) totalMigrated += companiesResult.count
       else totalErrors += companiesResult.errors.length
@@ -63,7 +64,7 @@ export async function migrateZustandToSupabase(): Promise<{
 
     // 3. Migrate Work Calls → work_calls table
     if (parsed.workCalls && Array.isArray(parsed.workCalls)) {
-      const callsResult = await migrateWorkCalls(user.id, parsed.workCalls)
+      const callsResult = await migrateWorkCalls(supabase, user.id, parsed.workCalls)
       results.push(callsResult)
       if (callsResult.success) totalMigrated += callsResult.count
       else totalErrors += callsResult.errors.length
@@ -71,7 +72,7 @@ export async function migrateZustandToSupabase(): Promise<{
 
     // 4. Migrate Entities (contacts, documents, etc.) → respective tables
     if (parsed.entities && Array.isArray(parsed.entities)) {
-      const entitiesResult = await migrateEntities(user.id, parsed.entities)
+      const entitiesResult = await migrateEntities(supabase, user.id, parsed.entities)
       results.push(entitiesResult)
       if (entitiesResult.success) totalMigrated += entitiesResult.count
       else totalErrors += entitiesResult.errors.length
@@ -79,7 +80,7 @@ export async function migrateZustandToSupabase(): Promise<{
 
     // 5. Migrate User Preferences → user_preferences table
     if (parsed.features) {
-      const prefsResult = await migrateUserPreferences(user.id, parsed)
+      const prefsResult = await migrateUserPreferences(supabase, user.id, parsed)
       results.push(prefsResult)
       if (prefsResult.success) totalMigrated += prefsResult.count
       else totalErrors += prefsResult.errors.length
@@ -107,7 +108,7 @@ export async function migrateZustandToSupabase(): Promise<{
 /**
  * Migrate user account to user_profiles
  */
-async function migrateUserAccount(userId: string, account: any): Promise<MigrationResult> {
+async function migrateUserAccount(supabase: any, userId: string, account: any): Promise<MigrationResult> {
   const errors: string[] = []
 
   try {
@@ -143,7 +144,7 @@ async function migrateUserAccount(userId: string, account: any): Promise<Migrati
 /**
  * Migrate companies to companies table
  */
-async function migrateCompanies(userId: string, companies: any[]): Promise<MigrationResult> {
+async function migrateCompanies(supabase: any, userId: string, companies: any[]): Promise<MigrationResult> {
   const errors: string[] = []
   let count = 0
 
@@ -182,7 +183,7 @@ async function migrateCompanies(userId: string, companies: any[]): Promise<Migra
 /**
  * Migrate work calls to work_calls table
  */
-async function migrateWorkCalls(userId: string, workCalls: any[]): Promise<MigrationResult> {
+async function migrateWorkCalls(supabase: any, userId: string, workCalls: any[]): Promise<MigrationResult> {
   const errors: string[] = []
   let count = 0
 
@@ -193,7 +194,7 @@ async function migrateWorkCalls(userId: string, workCalls: any[]): Promise<Migra
       .select('id, code')
       .eq('owner_id', userId)
 
-    const companyMap = new Map(companies?.map(c => [c.code, c.id]) || [])
+    const companyMap = new Map(companies?.map((c: any) => [c.code, c.id]) || [])
 
     for (const call of workCalls) {
       const companyId = companyMap.get(call.companyCode)
@@ -243,7 +244,7 @@ async function migrateWorkCalls(userId: string, workCalls: any[]): Promise<Migra
 /**
  * Migrate entities (contacts, documents) to their respective tables
  */
-async function migrateEntities(userId: string, entities: any[]): Promise<MigrationResult> {
+async function migrateEntities(supabase: any, userId: string, entities: any[]): Promise<MigrationResult> {
   const errors: string[] = []
   let count = 0
 
@@ -289,7 +290,7 @@ async function migrateEntities(userId: string, entities: any[]): Promise<Migrati
 /**
  * Migrate user preferences to user_preferences table
  */
-async function migrateUserPreferences(userId: string, parsed: any): Promise<MigrationResult> {
+async function migrateUserPreferences(supabase: any, userId: string, parsed: any): Promise<MigrationResult> {
   const errors: string[] = []
 
   try {

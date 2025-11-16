@@ -1,4 +1,4 @@
-import { supabase } from './client'
+import { createClient } from './client'
 
 /**
  * Usage Quota Helpers
@@ -16,6 +16,7 @@ export async function checkUsageQuota(
   exceeded: boolean
   percentUsed: number
 }> {
+  const supabase = createClient()
   const { data, error } = await supabase.rpc('check_usage_quota', {
     p_user_id: userId,
     p_feature_key: featureKey,
@@ -39,6 +40,7 @@ export async function trackUsage(
   featureKey: string,
   quantity: number = 1
 ) {
+  const supabase = createClient()
   const periodStart = new Date()
   periodStart.setDate(1) // First day of month
   periodStart.setHours(0, 0, 0, 0)
@@ -71,6 +73,7 @@ export async function checkFeatureAccess(
   companyId: string | null,
   featureKey: string
 ): Promise<boolean> {
+  const supabase = createClient()
   const { data, error } = await supabase.rpc('check_feature_access', {
     p_user_id: userId,
     p_company_id: companyId,
@@ -89,6 +92,7 @@ export async function checkFeatureAccess(
  * Get user's current subscription
  */
 export async function getUserSubscription(userId: string) {
+  const supabase = createClient()
   const { data, error } = await supabase
     .from('user_subscriptions')
     .select(`
@@ -111,6 +115,7 @@ export async function getUserSubscription(userId: string) {
  * Get all active subscription plans
  */
 export async function getSubscriptionPlans() {
+  const supabase = createClient()
   const { data, error } = await supabase
     .from('subscription_plans')
     .select('*')
@@ -134,6 +139,7 @@ export async function upsertUserPreferences(
   companyId: string | null,
   preferences: any
 ) {
+  const supabase = createClient()
   const { data, error } = await supabase
     .from('user_preferences')
     .upsert({
@@ -156,6 +162,7 @@ export async function upsertUserPreferences(
  * Get user preferences
  */
 export async function getUserPreferences(userId: string, companyId: string | null) {
+  const supabase = createClient()
   const { data, error } = await supabase
     .from('user_preferences')
     .select('*')
@@ -183,6 +190,7 @@ export async function searchContacts(
     limit?: number
   }
 ) {
+  const supabase = createClient()
   let query = supabase
     .from('contacts')
     .select('*')
@@ -218,6 +226,7 @@ export async function searchDocuments(
   documentType?: string,
   limit: number = 50
 ) {
+  const supabase = createClient()
   let query = supabase
     .from('financial_documents')
     .select('*')
@@ -244,6 +253,7 @@ export async function searchDocuments(
  * Get dashboard stats (using materialized view)
  */
 export async function getDashboardStats(userId: string, companyId: string | null) {
+  const supabase = createClient()
   const { data, error } = await supabase
     .from('dashboard_stats')
     .select('*')
@@ -271,6 +281,7 @@ export async function createNotification(notification: {
   link?: string
   priority?: 'low' | 'normal' | 'high' | 'urgent'
 }) {
+  const supabase = createClient()
   const { data, error } = await supabase
     .from('notifications')
     .insert(notification)
@@ -289,6 +300,7 @@ export async function createNotification(notification: {
  * Mark notification as read
  */
 export async function markNotificationRead(notificationId: string) {
+  const supabase = createClient()
   const { error } = await supabase
     .from('notifications')
     .update({ read: true, read_at: new Date().toISOString() })
@@ -304,6 +316,7 @@ export async function markNotificationRead(notificationId: string) {
  * Get unread notifications count
  */
 export async function getUnreadNotificationsCount(userId: string): Promise<number> {
+  const supabase = createClient()
   const { count, error } = await supabase
     .from('notifications')
     .select('*', { count: 'exact', head: true })
@@ -330,6 +343,7 @@ export async function logActivity(activity: {
   description?: string
   changes?: any
 }) {
+  const supabase = createClient()
   const { error } = await supabase
     .from('activity_log')
     .insert(activity)
