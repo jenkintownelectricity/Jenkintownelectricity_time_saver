@@ -28,12 +28,6 @@ import {
   DollarSign,
   Tag,
   ExternalLink,
-  Share2,
-  Copy,
-  MessageSquare,
-  Webhook,
-  Link2,
-  X,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -43,15 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { useToast } from '@/components/ui/use-toast'
 
 interface Lead {
   id: string
@@ -105,10 +90,6 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [sourceFilter, setSourceFilter] = useState<string>('all')
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [sharing, setSharing] = useState(false)
-  const { toast } = useToast()
 
   useEffect(() => {
     fetchLeads()
@@ -149,63 +130,6 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchLeads()
   }, [statusFilter, priorityFilter, sourceFilter])
-
-  async function shareLead(type: 'email' | 'sms' | 'webhook' | 'link', destination?: string) {
-    if (!selectedLead) return
-
-    setSharing(true)
-    try {
-      const payload: any = {
-        type,
-        includeFields: ['full_name', 'email', 'phone', 'service_requested', 'project_description', 'estimated_budget'],
-      }
-
-      if (destination) {
-        payload.to = destination
-      }
-
-      const response = await fetch(`/api/leads/${selectedLead.id}/share`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        toast({
-          title: 'Lead Shared!',
-          description: data.message || 'Lead has been shared successfully',
-        })
-
-        if (type === 'link' && data.share_url) {
-          await navigator.clipboard.writeText(data.share_url)
-          toast({
-            title: 'Link Copied!',
-            description: 'Share link has been copied to clipboard',
-          })
-        }
-
-        setShareDialogOpen(false)
-      } else {
-        throw new Error(data.error || 'Failed to share lead')
-      }
-    } catch (error: any) {
-      console.error('Error sharing lead:', error)
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to share lead',
-        variant: 'destructive',
-      })
-    } finally {
-      setSharing(false)
-    }
-  }
-
-  function openShareDialog(lead: Lead) {
-    setSelectedLead(lead)
-    setShareDialogOpen(true)
-  }
 
   const filteredLeads = leads.filter(lead => {
     if (!searchQuery) return true
@@ -561,15 +485,6 @@ export default function LeadsPage() {
                               variant="outline"
                               size="sm"
                               className="gap-2 group-hover:border-primary group-hover:bg-primary/10"
-                              onClick={() => openShareDialog(lead)}
-                            >
-                              <Share2 className="w-4 h-4" />
-                              Share
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2 group-hover:border-primary group-hover:bg-primary/10"
                             >
                               View Details
                               <ChevronRight className="w-4 h-4" />
@@ -585,119 +500,6 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
-
-      {/* Share Dialog */}
-      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent className="glass-card border-primary/20">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Share2 className="w-5 h-5 text-primary" />
-              Share Lead
-            </DialogTitle>
-            <DialogDescription>
-              Choose how you want to share {selectedLead?.full_name || 'this lead'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-4">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                className="w-full justify-start gap-3 h-auto py-4"
-                variant="outline"
-                onClick={() => shareLead('link')}
-                disabled={sharing}
-              >
-                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                  <Link2 className="w-5 h-5 text-blue-500" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-semibold">Copy Share Link</p>
-                  <p className="text-sm text-muted-foreground">
-                    Generate a secure shareable link (expires in 7 days)
-                  </p>
-                </div>
-                <Copy className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </motion.div>
-
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                className="w-full justify-start gap-3 h-auto py-4"
-                variant="outline"
-                onClick={() => {
-                  const email = prompt('Enter email address:')
-                  if (email) shareLead('email', email)
-                }}
-                disabled={sharing}
-              >
-                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-purple-500" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-semibold">Share via Email</p>
-                  <p className="text-sm text-muted-foreground">
-                    Send lead details to an email address
-                  </p>
-                </div>
-              </Button>
-            </motion.div>
-
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                className="w-full justify-start gap-3 h-auto py-4"
-                variant="outline"
-                onClick={() => {
-                  const phone = prompt('Enter phone number:')
-                  if (phone) shareLead('sms', phone)
-                }}
-                disabled={sharing}
-              >
-                <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-green-500" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-semibold">Share via SMS</p>
-                  <p className="text-sm text-muted-foreground">
-                    Send lead summary via text message
-                  </p>
-                </div>
-              </Button>
-            </motion.div>
-
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                className="w-full justify-start gap-3 h-auto py-4"
-                variant="outline"
-                onClick={() => {
-                  const webhook = prompt('Enter webhook URL:')
-                  if (webhook) shareLead('webhook', webhook)
-                }}
-                disabled={sharing}
-              >
-                <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                  <Webhook className="w-5 h-5 text-orange-500" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-semibold">Send to Webhook</p>
-                  <p className="text-sm text-muted-foreground">
-                    POST lead data to a webhook URL
-                  </p>
-                </div>
-              </Button>
-            </motion.div>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              variant="ghost"
-              onClick={() => setShareDialogOpen(false)}
-              disabled={sharing}
-            >
-              Cancel
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
