@@ -22,6 +22,9 @@ import {
   Mic,
   Camera,
   BookOpen,
+  UserPlus,
+  Plug,
+  Smartphone,
 } from 'lucide-react'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -55,6 +58,27 @@ const navItems: NavItem[] = [
     title: 'Customers',
     href: '/customers',
     icon: Users,
+  },
+  {
+    title: 'Leads',
+    href: '/leads',
+    icon: UserPlus,
+    badge: 'NEW',
+    badgeVariant: 'default',
+  },
+  {
+    title: 'Integrations',
+    href: '/integrations',
+    icon: Plug,
+    badge: 'NEW',
+    badgeVariant: 'default',
+  },
+  {
+    title: 'HiVE215 Config',
+    href: '/hive215-config',
+    icon: Smartphone,
+    badge: 'NEW',
+    badgeVariant: 'default',
   },
   {
     title: 'Jobs & Projects',
