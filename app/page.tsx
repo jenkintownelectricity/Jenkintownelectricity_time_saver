@@ -1,4 +1,5 @@
 'use client'
+// Updated: 2025-11-19 - Lead sharing and integrations deployed
 
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
