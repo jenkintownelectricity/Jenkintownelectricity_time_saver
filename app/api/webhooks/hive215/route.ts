@@ -274,8 +274,54 @@ export async function POST(request: NextRequest) {
 
     console.log('HiVE215 lead created:', lead.id)
 
-    // Update phone number stats (handled by database trigger)
-    // Stats are automatically updated by the trigger on hive215_call_logs insert
+    // Save call to hive215_call_logs table
+    // This will automatically update phone number stats via database trigger
+    try {
+      // Find the phone number ID
+      let phoneNumberId = null
+      if (leadData.source_details.phone_number_called) {
+        const { data: phoneNumber } = await supabase
+          .from('hive215_phone_numbers')
+          .select('id')
+          .eq('phone_number', leadData.source_details.phone_number_called)
+          .single()
+
+        if (phoneNumber) {
+          phoneNumberId = phoneNumber.id
+        }
+      }
+
+      // Insert call log
+      const { error: callLogError } = await supabase
+        .from('hive215_call_logs')
+        .insert({
+          hive215_call_id: payload.call_id,
+          phone_number_id: phoneNumberId,
+          phone_number: payload.phone_number || payload.to,
+          caller_number: payload.caller_number || payload.from,
+          caller_name: payload.caller_name,
+          caller_email: payload.caller_email,
+          direction: 'inbound',
+          status: payload.event?.includes('missed') ? 'missed' : 'completed',
+          duration: payload.duration || 0,
+          recording_url: payload.recording_url,
+          transcript: payload.transcript,
+          summary: payload.summary,
+          lead_id: lead.id,
+          lead_created: true,
+          call_started_at: payload.timestamp || new Date().toISOString(),
+          metadata: payload.metadata || {}
+        })
+
+      if (callLogError) {
+        console.error('Error inserting call log:', callLogError)
+        // Don't fail the whole request if call log fails
+      } else {
+        console.log('HiVE215 call log created')
+      }
+    } catch (callLogError) {
+      console.error('Failed to create call log:', callLogError)
+    }
 
     // TODO: Send notification to assigned user
     // TODO: Trigger automation workflows

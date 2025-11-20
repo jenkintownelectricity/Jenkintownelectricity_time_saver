@@ -5,9 +5,10 @@
  * Display list of all VAPI calls with filtering and search
  */
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useVAPIStore } from '@/lib/stores/vapi-store'
 import { CallStatus, CallUrgency } from '@/lib/types/vapi'
+import { createClient } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 import { Search, Phone, Clock, Filter, Download, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -24,32 +25,95 @@ import {
 import { exportCallLogsToCSV, exportCallLogsToExcel } from '@/lib/utils/spreadsheet'
 
 export function CallList() {
-  const { calls, setSelectedCall, searchCalls, getCallsByStatus, getCallsByUrgency } = useVAPIStore()
+  const { calls, setSelectedCall, searchCalls, getCallsByStatus, getCallsByUrgency, setLoading } = useVAPIStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<CallStatus | 'all'>('all')
   const [urgencyFilter, setUrgencyFilter] = useState<CallUrgency | 'all'>('all')
+  const [dbCalls, setDbCalls] = useState<any[]>([])
+  const [loading, setLocalLoading] = useState(true)
+
+  // Load calls from database on mount
+  useEffect(() => {
+    loadCallsFromDatabase()
+  }, [])
+
+  async function loadCallsFromDatabase() {
+    try {
+      setLocalLoading(true)
+      const supabase = createClient()
+
+      const { data, error } = await supabase
+        .from('vapi_calls')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      if (error) {
+        console.error('Error loading calls:', error)
+      } else {
+        setDbCalls(data || [])
+      }
+    } catch (error) {
+      console.error('Failed to load calls:', error)
+    } finally {
+      setLocalLoading(false)
+    }
+  }
+
+  // Combine database calls with Zustand calls (for backwards compatibility)
+  const allCalls = useMemo(() => {
+    // Convert DB calls to match VAPICall format
+    const formattedDbCalls = dbCalls.map((dbCall) => ({
+      id: dbCall.id,
+      userId: '',
+      companyId: '',
+      callId: dbCall.vapi_call_id,
+      callerPhone: dbCall.caller_phone || '',
+      callerName: dbCall.caller_name,
+      duration: dbCall.duration || 0,
+      transcript: dbCall.transcript || '',
+      recording: dbCall.recording_url,
+      extractedData: dbCall.extracted_data || {},
+      appointmentCreated: dbCall.appointment_created || false,
+      appointmentId: dbCall.appointment_id,
+      status: dbCall.status as CallStatus,
+      tags: Array.isArray(dbCall.tags) ? dbCall.tags : [],
+      createdAt: new Date(dbCall.created_at),
+      updatedAt: new Date(dbCall.updated_at || dbCall.created_at)
+    }))
+
+    return [...formattedDbCalls, ...calls]
+  }, [dbCalls, calls])
 
   // Filter and search calls
   const filteredCalls = useMemo(() => {
-    let result = calls
+    let result = allCalls
 
     // Apply status filter
     if (statusFilter !== 'all') {
-      result = getCallsByStatus(statusFilter)
+      result = result.filter((call) => call.status === statusFilter)
     }
 
     // Apply urgency filter
     if (urgencyFilter !== 'all') {
-      result = getCallsByUrgency(urgencyFilter)
+      result = result.filter((call) => call.extractedData?.urgency === urgencyFilter)
     }
 
     // Apply search
     if (searchQuery) {
-      result = searchCalls(searchQuery)
+      const lowerQuery = searchQuery.toLowerCase()
+      result = result.filter(
+        (call) =>
+          call.callerName?.toLowerCase().includes(lowerQuery) ||
+          call.callerPhone.includes(searchQuery) ||
+          call.transcript.toLowerCase().includes(lowerQuery) ||
+          call.extractedData?.customerName?.toLowerCase().includes(lowerQuery) ||
+          call.extractedData?.serviceRequested?.toLowerCase().includes(lowerQuery)
+      )
     }
 
     return result
-  }, [calls, statusFilter, urgencyFilter, searchQuery, getCallsByStatus, getCallsByUrgency, searchCalls])
+  }, [allCalls, statusFilter, urgencyFilter, searchQuery])
 
   const handleExportCSV = () => {
     exportCallLogsToCSV(filteredCalls)
@@ -123,7 +187,14 @@ export function CallList() {
 
       {/* Call List */}
       <div className="space-y-3">
-        {filteredCalls.length === 0 ? (
+        {loading ? (
+          <Card className="p-8 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-gray-500">Loading calls...</p>
+            </div>
+          </Card>
+        ) : filteredCalls.length === 0 ? (
           <Card className="p-8 text-center">
             <Phone className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <p className="text-gray-500">No calls found</p>
