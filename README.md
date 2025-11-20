@@ -1,56 +1,86 @@
-# AppIo.AI - The Ultimate Construction AI Assistant
+# Jenkintown Electricity Time Saver
 
-> Your expert AI assistant for all construction trades. Voice-powered, vision-enabled, and always learning.
+> Complete business management system with AI-powered phone integration, lead capture, and intelligent call routing.
 
-## 🎯 Vision
+## 🎯 Project Overview
 
-AppIo.AI is building the world's largest construction knowledge database - an AI-powered assistant that works like Alexa or Siri, but specialized for construction professionals across all trades. From electricians to plumbers, carpenters to HVAC technicians, AppIo.AI provides instant expert guidance, code compliance checks, and intelligent visual analysis right from the job site.
+This is a comprehensive Next.js application for electrical/HVAC/plumbing contractors featuring:
+- **4 Specialized AI Phone Agents** (Electrical/HVAC/Plumbing, Home Restoration, Office Assistant, Sales)
+- **VAPI Integration** for AI-powered voice calls
+- **HiVE215 Integration** for phone number management (up to 10 numbers)
+- **Automatic Lead Capture** from phone calls and webhooks
+- **Call Logging & Analytics** with full database persistence
+- **Customer Management** with flexible contact system
+- **Financial Documents** (Invoices, Estimates, Work Orders)
+- **Team Management** with work call bidding system
 
-## ✨ Features
+## ✨ Current Features
 
-### 🎤 Voice AI Assistant
-- Natural conversation with construction-specialized AI
-- Ask questions about codes, regulations, and best practices
-- Get material recommendations and calculations
-- Voice-activated for hands-free operation (perfect for job sites)
-- Powered by VAPI for real-time voice interaction
+### 📞 Phone & AI Integration
+- **VAPI Calls**: AI-powered phone assistant with 4 specialized agents
+- **HiVE215 Integration**: Manage up to 10 phone numbers
+- **Automatic Lead Generation**: Calls automatically create leads in database
+- **Call Transcription**: Full transcripts with AI analysis
+- **Smart Routing**: Assign calls by phone number or department
+- **Call Analytics**: Performance tracking per agent type
 
-### 📸 Photo Analysis
-- AI-powered visual analysis of construction work
-- Wire gauge and type identification
-- Electrical panel reading and labeling
-- Code compliance verification
-- Safety concern detection
-- Installation quality assessment
-- Powered by Claude 3.5 Sonnet for advanced vision capabilities
+### 🎯 Lead Management
+- **Automatic Capture**: From VAPI calls, HiVE215, webhooks, and forms
+- **Lead Scoring**: Automated scoring based on data quality and urgency
+- **Activity Tracking**: Full history of all lead interactions
+- **Assignment**: Auto-assign to team members by phone number
+- **Lead Sharing**: Export and share leads via unique URLs
+- **Priority Levels**: Urgent, High, Medium, Low
 
-### 📚 NEC Code Lookup
-- Fast search through National Electrical Code
-- Bookmark frequently used codes
-- Voice or text search
-- Expandable to other construction codes and regulations
+### 👥 AI Agents (All Configured)
+1. **⚡ Electrical/HVAC/Plumbing Specialist**
+   - Expert diagnostics and safety protocols
+   - Instant pricing and scheduling
+   - Emergency triage
 
-### 🚀 Coming Soon
-- Job tracking and management
-- Material cost estimation
-- Project collaboration tools
-- Multi-trade support (plumbing, HVAC, carpentry, etc.)
-- Offline mode for remote job sites
+2. **🏠 Home Restoration Specialist**
+   - Crisis management for water/fire damage
+   - Insurance navigation
+   - Empathetic customer support
+
+3. **💼 Office Assistant**
+   - Scheduling and appointments
+   - Billing questions
+   - General customer service
+
+4. **💰 Sales Specialist**
+   - SPIN selling methodology
+   - BANT qualification
+   - Objection handling and closing
+
+### 💰 Financial Management
+- Invoices, Estimates, Quotes, Work Orders
+- Line items with tax calculation
+- Payment tracking
+- Flexible document types
+
+### 📊 Analytics & Reporting
+- Call statistics by agent type
+- Lead conversion tracking
+- Performance metrics
+- Cost tracking per call
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 14 with App Router & TypeScript
+- **Framework**: Next.js 16.0.2 with App Router & TypeScript
+- **Database**: Supabase (PostgreSQL)
 - **Styling**: Tailwind CSS v4 + shadcn/ui components
 - **State Management**: Zustand
 - **Voice AI**: VAPI SDK
-- **Vision AI**: Anthropic Claude API
-- **Deployment**: Vercel-ready
+- **Vision AI**: Anthropic Claude 3.5 Sonnet
+- **Phone System**: HiVE215 Integration
+- **Deployment**: Vercel
 
 ## 📦 Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/Jenkintownelectricity_time_saver.git
+git clone https://github.com/jenkintownelectricity/Jenkintownelectricity_time_saver.git
 cd Jenkintownelectricity_time_saver
 
 # Install dependencies
@@ -66,66 +96,232 @@ npm run build
 npm start
 ```
 
+## 🗄️ Database Setup
+
+1. **Create Supabase Project** at [supabase.com](https://supabase.com)
+
+2. **Run Migrations** in order:
+   ```sql
+   -- Run these in Supabase SQL Editor
+   database/migrations/001_initial_schema.sql
+   database/migrations/002_row_level_security.sql
+   database/migrations/003_seed_data.sql
+   database/migrations/004_feature_gates_and_monetization.sql
+   database/migrations/005_additional_tables_and_enhancements.sql
+   database/migrations/006_lead_capture_system.sql
+   database/migrations/007_hive215_integration.sql
+   database/migrations/008_lead_sharing_integrations.sql
+   database/migrations/009_vapi_calls_integration.sql  ← NEW!
+   ```
+
+3. **Database Tables Created**:
+   - `user_profiles` - User accounts
+   - `companies` - Multi-tenant companies
+   - `contacts` - Universal contacts (clients, vendors, etc.)
+   - `financial_documents` - Invoices, estimates, work orders
+   - `leads` - Lead capture and management
+   - `lead_activities` - Lead activity tracking
+   - `vapi_calls` - VAPI phone call logs (NEW!)
+   - `vapi_call_analytics` - Call analytics (NEW!)
+   - `hive215_phone_numbers` - Phone number management
+   - `hive215_call_logs` - HiVE215 call logs
+   - `webhook_configs` - Webhook configuration
+
 ## 🔑 API Keys Setup
 
-To enable full functionality, you'll need:
+Configure in **Settings → API Keys** (http://localhost:3000/settings?tab=api-keys):
 
-1. **VAPI API Key** - For voice AI features
+### Required for Phone Features:
+1. **VAPI API Key**
    - Sign up at [vapi.ai](https://vapi.ai)
-   - Get your public key
-   - Add to environment variables or settings
+   - Get your Public API Key
+   - Get your Assistant ID
+   - Choose AI agent type (Electrical, Restoration, Office, or Sales)
+   - Test connection with built-in test button
 
-2. **Anthropic API Key** - For photo analysis
+2. **HiVE215 Configuration**
+   - Configure at [HiVE215 Config](/hive215-config)
+   - Set webhook URL: `https://your-domain.com/api/webhooks/hive215`
+   - Add secret header: `x-hive215-secret`
+
+### Optional:
+3. **Anthropic API Key** (for photo analysis)
    - Sign up at [anthropic.com](https://anthropic.com)
-   - Get your API key
-   - Add to environment variables or settings
+   - Add API key in Settings
 
-Create a `.env.local` file:
-```env
-NEXT_PUBLIC_VAPI_KEY=your_vapi_key_here
-ANTHROPIC_API_KEY=your_anthropic_key_here
+## 🚀 Quick Start Guide
+
+### 1. Deploy to Vercel
+```bash
+# Push to GitHub first
+git push origin main
+
+# Deploy to Vercel
+vercel deploy --prod
 ```
 
-## 🎨 Design Philosophy
+### 2. Configure VAPI (Tonight!)
+1. Go to Settings → API Keys
+2. Enter your VAPI Public API Key
+3. Enter your VAPI Assistant ID
+4. Choose your AI agent type
+5. Test connection (should see ✅)
 
-- **Mobile-First**: Optimized for smartphones and tablets
-- **Touch-Friendly**: Large buttons perfect for gloved hands
-- **High Contrast**: Dark mode optimized for outdoor visibility
-- **Fast & Responsive**: Built with performance in mind
-- **Professional**: Clean, modern UI that inspires confidence
+### 3. Set Up HiVE215
+1. Go to HiVE215 Config
+2. Copy webhook URL
+3. Configure in HiVE215 dashboard
+4. Add your 10 phone numbers
 
-## 📱 Usage
+### 4. View Calls & Leads
+- **VAPI Calls**: http://localhost:3000/calls
+- **Leads**: http://localhost:3000/leads
+- **HiVE215 Config**: http://localhost:3000/hive215-config
 
-1. **Voice Assistant**: Tap the large "Talk to AI Assistant" button to start a voice conversation
-2. **Photo Analysis**: Take or upload photos of your work for instant AI analysis
-3. **NEC Lookup**: Search for electrical codes by number or keyword
-4. **Bookmarks**: Save frequently used codes for quick access
+## 📞 Webhook Endpoints
 
-## 🗺️ Roadmap
+### VAPI Webhook
+```
+POST /api/vapi/webhook
+```
+Receives call events from VAPI:
+- `call.started` - Saves new call to database
+- `call.ended` - Updates call, creates lead, extracts data
+- `transcript.updated` - Real-time transcript updates
 
-- [ ] Integrate existing NEC codes database
-- [ ] Add settings page for API key management
-- [ ] Implement job tracking functionality
-- [ ] Add support for additional construction trades
-- [ ] Create offline mode with local storage
-- [ ] Build material cost estimation tool
-- [ ] Add team collaboration features
-- [ ] Integrate with construction project management tools
-- [ ] Expand to international building codes
-- [ ] Mobile app versions (iOS & Android)
+### HiVE215 Webhook
+```
+POST /api/webhooks/hive215
+```
+Receives call events from HiVE215:
+- Creates call log in database
+- Generates lead automatically
+- Updates phone number statistics
+
+### Test Endpoints
+```
+GET /api/vapi/test       - Test VAPI credentials
+GET /api/anthropic/test  - Test Anthropic API key
+```
+
+## 📂 Project Structure
+
+```
+/app
+  /api
+    /vapi/webhook       - VAPI call events
+    /vapi/test         - VAPI connection test
+    /anthropic/test    - Anthropic connection test
+    /webhooks/hive215  - HiVE215 integration
+    /webhooks/leads    - Lead capture webhook
+  /calls               - VAPI calls dashboard
+  /leads               - Lead management
+  /hive215-config      - Phone number config
+  /settings            - App settings & API keys
+  /ai-agents           - AI agent configurations
+    /electrical-hvac-plumbing-agent.ts
+    /home-restoration-agent.ts
+    /office-assistant-agent.ts
+    /salesman-agent.ts
+    /README.md         - Agent documentation
+
+/components
+  /vapi               - VAPI-related components
+  /settings           - Settings components
+  /layout             - Layout components
+
+/database
+  /migrations         - Database migrations (run in order!)
+  schema.sql         - Complete schema reference
+
+/lib
+  /stores            - Zustand state management
+  /supabase          - Supabase client utilities
+  /types             - TypeScript type definitions
+```
+
+## 🔄 Call Flow
+
+### VAPI Call Flow:
+```
+1. Customer calls VAPI number
+   ↓
+2. AI agent answers (based on your selection)
+   ↓
+3. Webhook: call.started → Saved to vapi_calls table
+   ↓
+4. Conversation happens (AI extracts info)
+   ↓
+5. Webhook: call.ended
+   ↓
+6. Call updated with transcript, duration, recording
+   ↓
+7. Lead automatically created in leads table
+   ↓
+8. Call linked to lead
+   ↓
+9. Appears in /calls and /leads dashboards
+```
+
+### HiVE215 Call Flow:
+```
+1. Customer calls one of your 10 numbers
+   ↓
+2. HiVE215 handles the call
+   ↓
+3. Webhook sent to /api/webhooks/hive215
+   ↓
+4. Call saved to hive215_call_logs
+   ↓
+5. Lead created in leads table
+   ↓
+6. Phone number stats updated (via trigger)
+   ↓
+7. Appears in /hive215-config stats
+```
+
+## 🎨 Design System
+
+- **Glassmorphism**: Modern glass-effect UI
+- **Dark Mode Ready**: Optimized for all lighting
+- **Mobile-First**: Responsive design
+- **Animations**: Framer Motion for smooth interactions
+- **Color Scheme**: Primary blue/purple gradient
+
+## 🌿 Git Branch Information
+
+See `BRANCH_LOG.md` for complete branch history and status.
+
+**Current Production Branch**: `claude/production-combined-app-011CqeWY1BKpSb19tviTANoA`
+
+## 📋 For Next Claude Code Session
+
+See `NEXT_SESSION.md` for detailed continuation instructions.
+
+## 🐛 Known Issues
+
+None currently! All systems operational.
+
+## 📝 Recent Changes
+
+### Latest Session (2025-01-20)
+- ✅ Added AI agent selection to VAPI Calls page
+- ✅ Added AI agent selection to HiVE215 Config page
+- ✅ Fixed API connection test buttons (server-side validation)
+- ✅ Implemented full database persistence for VAPI calls
+- ✅ Implemented full database persistence for HiVE215 calls
+- ✅ Calls now persist across page refreshes
+- ✅ Automatic lead creation from all calls
+- ✅ Call analytics and tracking
 
 ## 🤝 Contributing
 
-AppIo.AI is building the world's largest construction database. Contributions are welcome!
+This is a private project for Jenkintown Electricity.
 
 ## 📄 License
 
-Copyright © 2024 AppIo.AI. All rights reserved.
-
-## 🙏 Acknowledgments
-
-Built with modern web technologies and AI to revolutionize how construction professionals work.
+Copyright © 2025 Jenkintown Electricity. All rights reserved.
 
 ---
 
-**AppIo.AI** - Making construction smarter, one job at a time.
+**Jenkintown Electricity Time Saver** - Smarter business management with AI.
