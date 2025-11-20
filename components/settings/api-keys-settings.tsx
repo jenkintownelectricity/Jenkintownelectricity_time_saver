@@ -35,26 +35,32 @@ export default function ApiKeysSettings() {
       description: 'Verifying your VAPI credentials',
     })
 
-    // Test connection by making a simple API call
     try {
-      const response = await fetch('https://api.vapi.ai/assistant/' + apiKeys.vapiAssistantId, {
+      const response = await fetch('/api/vapi/test', {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKeys.vapi}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          apiKey: apiKeys.vapi,
+          assistantId: apiKeys.vapiAssistantId,
+        }),
       })
 
-      if (response.ok) {
+      const data = await response.json()
+
+      if (data.success) {
         toast({
           title: 'Connection Successful! ✅',
-          description: 'Your VAPI integration is ready to use',
+          description: data.message || 'Your VAPI integration is ready to use',
         })
       } else {
-        throw new Error('Invalid credentials')
+        throw new Error(data.error || 'Connection failed')
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Connection Failed',
-        description: 'Please check your API key and Assistant ID',
+        description: error.message || 'Please check your API key and Assistant ID',
         variant: 'destructive',
       })
     }
@@ -76,32 +82,30 @@ export default function ApiKeysSettings() {
     })
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/anthropic/test', {
         method: 'POST',
         headers: {
-          'x-api-key': apiKeys.anthropic,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 10,
-          messages: [{ role: 'user', content: 'Hi' }],
+          apiKey: apiKeys.anthropic,
         }),
       })
 
-      if (response.ok) {
+      const data = await response.json()
+
+      if (data.success) {
         toast({
           title: 'Connection Successful! ✅',
-          description: 'Your Anthropic integration is ready to use',
+          description: data.message || 'Your Anthropic integration is ready to use',
         })
       } else {
-        throw new Error('Invalid API key')
+        throw new Error(data.error || 'Connection failed')
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Connection Failed',
-        description: 'Please check your API key',
+        description: error.message || 'Please check your API key',
         variant: 'destructive',
       })
     }
