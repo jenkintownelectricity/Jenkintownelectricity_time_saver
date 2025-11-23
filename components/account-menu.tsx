@@ -1,480 +1,469 @@
 'use client'
 
+import { useState } from 'react'
 import { useAppStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { User, Building2, Copy, Check, Plus, Link2, ChevronDown } from 'lucide-react'
-import { useState } from 'react'
-import { validateEmail, validatePhone, validateRequired, validateCompanyCode, validateLength } from '@/lib/validation'
+import {
+  User,
+  Building2,
+  ChevronDown,
+  Plus,
+  Link,
+  Settings,
+  LogOut,
+  Check,
+  Copy,
+  Users,
+  Zap
+} from 'lucide-react'
 
 export default function AccountMenu() {
   const {
-    userAccount,
-    companies,
+    userProfile,
+    companyAccounts,
     currentCompanyCode,
-    createAccount,
-    createCompany,
-    switchCompany,
-    linkCompany,
+    createUserProfile,
+    updateUserProfile,
+    createCompanyAccount,
+    setCurrentCompanyCode,
+    linkCompanyToUser,
+    connectCompanies
   } = useAppStore()
 
-  const [isOpen, setIsOpen] = useState(false)
-  const [showCreateAccount, setShowCreateAccount] = useState(false)
-  const [showCreateCompany, setShowCreateCompany] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [showProfileSetup, setShowProfileSetup] = useState(false)
+  const [showCompanySetup, setShowCompanySetup] = useState(false)
   const [showLinkCompany, setShowLinkCompany] = useState(false)
 
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [jobTitle, setJobTitle] = useState('')
-  const [companyName, setCompanyName] = useState('')
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  })
+
+  const [companyForm, setCompanyForm] = useState({
+    companyName: '',
+    businessType: 'Electrical',
+    address: '',
+    phone: '',
+    email: ''
+  })
+
   const [linkCode, setLinkCode] = useState('')
 
-  const [copiedMember, setCopiedMember] = useState(false)
-  const [copiedCompany, setCopiedCompany] = useState(false)
+  const currentCompany = companyAccounts.find(c => c.companyCode === currentCompanyCode)
 
-  const [errors, setErrors] = useState<{
-    name?: string
-    email?: string
-    phone?: string
-    jobTitle?: string
-    companyName?: string
-    linkCode?: string
-  }>({})
-
-  const currentCompany = companies.find((c) => c.code === currentCompanyCode)
-
-  const handleCreateAccount = () => {
-    const newErrors: typeof errors = {}
-
-    // Validate name
-    const nameValidation = validateRequired(name, 'Name')
-    if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.error
-    } else {
-      const lengthValidation = validateLength(name, 2, 100, 'Name')
-      if (!lengthValidation.isValid) {
-        newErrors.name = lengthValidation.error
-      }
-    }
-
-    // Validate email
-    const emailValidation = validateEmail(email)
-    if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.error
-    }
-
-    // Validate phone
-    const phoneValidation = validatePhone(phone)
-    if (!phoneValidation.isValid) {
-      newErrors.phone = phoneValidation.error
-    }
-
-    // Validate job title
-    const jobTitleValidation = validateRequired(jobTitle, 'Job title')
-    if (!jobTitleValidation.isValid) {
-      newErrors.jobTitle = jobTitleValidation.error
-    }
-
-    setErrors(newErrors)
-
-    // If there are errors, don't proceed
-    if (Object.keys(newErrors).length > 0) {
+  const handleCreateProfile = () => {
+    if (!profileForm.name || !profileForm.email) {
+      alert('Please enter name and email')
       return
     }
-
-    // All validations passed
-    createAccount(name, email, phone, jobTitle)
-    setShowCreateAccount(false)
-    setName('')
-    setEmail('')
-    setPhone('')
-    setJobTitle('')
-    setErrors({})
+    createUserProfile({
+      name: profileForm.name,
+      email: profileForm.email,
+      phone: profileForm.phone,
+      linkedCompanies: []
+    })
+    setShowProfileSetup(false)
+    setProfileForm({ name: '', email: '', phone: '' })
   }
 
   const handleCreateCompany = () => {
-    const newErrors: typeof errors = {}
-
-    // Validate company name
-    const nameValidation = validateRequired(companyName, 'Company name')
-    if (!nameValidation.isValid) {
-      newErrors.companyName = nameValidation.error
-    } else {
-      const lengthValidation = validateLength(companyName, 2, 100, 'Company name')
-      if (!lengthValidation.isValid) {
-        newErrors.companyName = lengthValidation.error
-      }
-    }
-
-    setErrors(newErrors)
-
-    if (Object.keys(newErrors).length > 0) {
+    if (!companyForm.companyName) {
+      alert('Please enter company name')
       return
     }
-
-    createCompany(companyName)
-    setShowCreateCompany(false)
-    setCompanyName('')
-    setErrors({})
+    if (!userProfile) {
+      alert('Please create your profile first')
+      return
+    }
+    const companyCode = createCompanyAccount({
+      companyName: companyForm.companyName,
+      businessType: companyForm.businessType,
+      address: companyForm.address,
+      phone: companyForm.phone,
+      email: companyForm.email,
+      ownerMemberNumber: userProfile.memberNumber,
+      members: [userProfile.memberNumber],
+      connectedCompanies: [],
+      settings: {
+        allowExternalBidding: true,
+        requireBidApproval: false,
+        defaultCallBonus: 50,
+        daytimeCallBonus: 25,
+        emergencyCallBonus: 100
+      }
+    })
+    linkCompanyToUser(companyCode)
+    setShowCompanySetup(false)
+    setCompanyForm({ companyName: '', businessType: 'Electrical', address: '', phone: '', email: '' })
   }
 
   const handleLinkCompany = () => {
-    const newErrors: typeof errors = {}
-
-    // Validate company code format
-    const codeValidation = validateCompanyCode(linkCode.toUpperCase())
-    if (!codeValidation.isValid) {
-      newErrors.linkCode = codeValidation.error
-    }
-
-    setErrors(newErrors)
-
-    if (Object.keys(newErrors).length > 0) {
+    if (!linkCode.trim()) {
+      alert('Please enter a company code')
       return
     }
-
-    linkCompany(linkCode.toUpperCase())
-    setShowLinkCompany(false)
+    linkCompanyToUser(linkCode.trim())
     setLinkCode('')
-    setErrors({})
+    setShowLinkCompany(false)
   }
 
-  const copyToClipboard = (text: string, type: 'member' | 'company') => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    if (type === 'member') {
-      setCopiedMember(true)
-      setTimeout(() => setCopiedMember(false), 2000)
-    } else {
-      setCopiedCompany(true)
-      setTimeout(() => setCopiedCompany(false), 2000)
-    }
+    alert('Copied to clipboard!')
   }
 
-  if (!isOpen) {
+  if (!userProfile) {
+    // First-time setup
     return (
-      <Button
-        variant="outline"
-        onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2"
-      >
-        <User className="w-4 h-4" />
-        {userAccount ? (
-          <span className="hidden md:inline">{userAccount.name}</span>
-        ) : (
-          <span className="hidden md:inline">Account</span>
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowProfileSetup(true)}
+          className="flex items-center gap-2"
+        >
+          <User className="w-4 h-4" />
+          Create Account
+        </Button>
+
+        {/* Profile Setup Modal */}
+        {showProfileSetup && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-500" />
+                  Create Your Account
+                </CardTitle>
+                <CardDescription>
+                  Set up your personal profile to get started
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Name *</label>
+                  <Input
+                    placeholder="John Smith"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Email *</label>
+                  <Input
+                    type="email"
+                    placeholder="john@example.com"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Phone</label>
+                  <Input
+                    type="tel"
+                    placeholder="(555) 123-4567"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex gap-3 justify-end pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowProfileSetup(false)
+                      setProfileForm({ name: '', email: '', phone: '' })
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateProfile}>
+                    Create Profile
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
-        <ChevronDown className="w-4 h-4" />
-      </Button>
+      </>
     )
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-end p-0">
-      <div className="bg-background border border-border rounded-lg shadow-xl max-w-md w-full max-h-screen overflow-y-auto mt-16 mr-4">
-        {/* Header */}
-        <div className="sticky top-0 bg-background border-b border-border p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-foreground">Account</h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsOpen(false)}
-            >
-              ✕
-            </Button>
-          </div>
-        </div>
+    <div className="relative">
+      {/* Account Button */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="flex items-center gap-2"
+      >
+        <User className="w-4 h-4" />
+        <span className="hidden md:inline">{userProfile.name}</span>
+        <Badge variant="secondary" className="text-xs hidden lg:inline">
+          {userProfile.memberNumber}
+        </Badge>
+        <ChevronDown className="w-3 h-3" />
+      </Button>
 
-        <div className="p-4 space-y-4">
-          {/* No Account - Create Account */}
-          {!userAccount && !showCreateAccount && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Create Your Profile
-                </CardTitle>
-                <CardDescription>
-                  Get your unique 8-digit member number
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+      {/* Dropdown Menu */}
+      {showDropdown && (
+        <div className="absolute right-0 mt-2 w-80 bg-background border rounded-lg shadow-lg z-50">
+          <Card className="border-0">
+            <CardHeader className="border-b">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <User className="w-6 h-6 text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="text-base">{userProfile.name}</CardTitle>
+                  <CardDescription className="flex items-center gap-2">
+                    Member #{userProfile.memberNumber}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4"
+                      onClick={() => copyToClipboard(userProfile.memberNumber)}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-3 space-y-2">
+              {/* Current Company */}
+              {currentCompany && (
+                <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Building2 className="w-4 h-4 text-green-500" />
+                    <span className="text-sm font-semibold">{currentCompany.companyName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Code: {currentCompany.companyCode}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4"
+                      onClick={() => copyToClipboard(currentCompany.companyCode)}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Company Switcher */}
+              {companyAccounts.length > 1 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground px-2">Switch Company</p>
+                  {companyAccounts.map(company => (
+                    <Button
+                      key={company.companyCode}
+                      variant={company.companyCode === currentCompanyCode ? "default" : "ghost"}
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setCurrentCompanyCode(company.companyCode)
+                        setShowDropdown(false)
+                      }}
+                    >
+                      <Building2 className="w-4 h-4 mr-2" />
+                      {company.companyName}
+                      {company.companyCode === currentCompanyCode && (
+                        <Check className="w-4 h-4 ml-auto" />
+                      )}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              <div className="border-t pt-2 space-y-1">
                 <Button
-                  className="w-full"
-                  onClick={() => setShowCreateAccount(true)}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setShowCompanySetup(true)
+                    setShowDropdown(false)
+                  }}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Account
+                  Add Company
                 </Button>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Create Account Form */}
-          {showCreateAccount && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Input
-                    placeholder="Full Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className={errors.name ? 'border-red-500' : ''}
-                  />
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-                </div>
-                <div>
-                  <Input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={errors.email ? 'border-red-500' : ''}
-                  />
-                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-                </div>
-                <div>
-                  <Input
-                    type="tel"
-                    placeholder="Phone"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className={errors.phone ? 'border-red-500' : ''}
-                  />
-                  {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-                </div>
-                <div>
-                  <Input
-                    placeholder="Job Title (e.g., Electrician, Owner)"
-                    value={jobTitle}
-                    onChange={(e) => setJobTitle(e.target.value)}
-                    className={errors.jobTitle ? 'border-red-500' : ''}
-                  />
-                  {errors.jobTitle && <p className="text-red-500 text-sm mt-1">{errors.jobTitle}</p>}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1"
-                    onClick={handleCreateAccount}
-                  >
-                    Create
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCreateAccount(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* User Account Info */}
-          {userAccount && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    {userAccount.name}
-                  </span>
-                  <Badge variant="outline">{userAccount.memberNumber}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  {userAccount.jobTitle} • {userAccount.email}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="w-full"
-                  onClick={() => copyToClipboard(userAccount.memberNumber, 'member')}
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setShowLinkCompany(true)
+                    setShowDropdown(false)
+                  }}
                 >
-                  {copiedMember ? (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy Member Number
-                    </>
-                  )}
+                  <Link className="w-4 h-4 mr-2" />
+                  Link to Company
                 </Button>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Current Company */}
-          {userAccount && currentCompany && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5" />
-                    {currentCompany.name}
-                  </span>
-                  <Badge>{currentCompany.code}</Badge>
-                </CardTitle>
-                <CardDescription>
-                  {currentCompany.members.length} member{currentCompany.members.length !== 1 ? 's' : ''} •{' '}
-                  {currentCompany.linkedCompanies.length} linked
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="w-full"
-                  onClick={() => copyToClipboard(currentCompany.code, 'company')}
+                  className="w-full justify-start"
+                  onClick={() => {
+                    // Navigate to connected companies management
+                    setShowDropdown(false)
+                  }}
                 >
-                  {copiedCompany ? (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy Company Code
-                    </>
-                  )}
+                  <Users className="w-4 h-4 mr-2" />
+                  Connected Network
                 </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Other Companies */}
-          {userAccount && companies.length > 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Switch Company</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {companies.filter((c) => c.code !== currentCompanyCode).map((company) => (
-                  <Button
-                    key={company.code}
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-between"
-                    onClick={() => switchCompany(company.code)}
-                  >
-                    <span>{company.name}</span>
-                    <Badge variant="outline">{company.code}</Badge>
-                  </Button>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Create Company */}
-          {userAccount && !showCreateCompany && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowCreateCompany(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create New Company
-            </Button>
-          )}
-
-          {/* Create Company Form */}
-          {showCreateCompany && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Company</CardTitle>
-                <CardDescription>
-                  You'll get a unique 6-character code
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Input
-                    placeholder="Company Name"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className={errors.companyName ? 'border-red-500' : ''}
-                  />
-                  {errors.companyName && <p className="text-red-500 text-sm mt-1">{errors.companyName}</p>}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1"
-                    onClick={handleCreateCompany}
-                  >
-                    Create
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCreateCompany(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Link Company */}
-          {userAccount && currentCompany && !showLinkCompany && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowLinkCompany(true)}
-            >
-              <Link2 className="w-4 h-4 mr-2" />
-              Link to Another Company
-            </Button>
-          )}
-
-          {/* Link Company Form */}
-          {showLinkCompany && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Link Company</CardTitle>
-                <CardDescription>
-                  Enter a company code to join their network
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <Input
-                    placeholder="Company Code (e.g., ELX-A3B)"
-                    value={linkCode}
-                    onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
-                    className={errors.linkCode ? 'border-red-500' : ''}
-                  />
-                  {errors.linkCode && <p className="text-red-500 text-sm mt-1">{errors.linkCode}</p>}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    className="flex-1"
-                    onClick={handleLinkCompany}
-                  >
-                    Link
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowLinkCompany(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      )}
+
+      {/* Company Setup Modal */}
+      {showCompanySetup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-green-500" />
+                Add New Company
+              </CardTitle>
+              <CardDescription>
+                Register a new business/company to your account
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Company Name *</label>
+                <Input
+                  placeholder="ABC Electric"
+                  value={companyForm.companyName}
+                  onChange={(e) => setCompanyForm({ ...companyForm, companyName: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Business Type</label>
+                <select
+                  value={companyForm.businessType}
+                  onChange={(e) => setCompanyForm({ ...companyForm, businessType: e.target.value })}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                >
+                  <option value="Electrical">Electrical</option>
+                  <option value="Plumbing">Plumbing</option>
+                  <option value="HVAC">HVAC</option>
+                  <option value="General Contractor">General Contractor</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Address</label>
+                <Input
+                  placeholder="123 Main St, City, ST 12345"
+                  value={companyForm.address}
+                  onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Phone</label>
+                <Input
+                  type="tel"
+                  placeholder="(555) 123-4567"
+                  value={companyForm.phone}
+                  onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Email</label>
+                <Input
+                  type="email"
+                  placeholder="info@abcelectric.com"
+                  value={companyForm.email}
+                  onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowCompanySetup(false)
+                    setCompanyForm({ companyName: '', businessType: 'Electrical', address: '', phone: '', email: '' })
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateCompany}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Company
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Link Company Modal */}
+      {showLinkCompany && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Link className="w-5 h-5 text-purple-500" />
+                Link to Company
+              </CardTitle>
+              <CardDescription>
+                Enter a company code to link your account to another business
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Company Code</label>
+                <Input
+                  placeholder="ABC-123"
+                  value={linkCode}
+                  onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Ask the company owner for their 6-character company code
+                </p>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowLinkCompany(false)
+                    setLinkCode('')
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleLinkCompany}>
+                  <Link className="w-4 h-4 mr-2" />
+                  Link Company
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

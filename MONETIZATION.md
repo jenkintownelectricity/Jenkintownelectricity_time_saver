@@ -1,357 +1,464 @@
-# 💰 Monetization Strategy & Feature Toggles
+# Monetization Strategy & Implementation Guide
 
-**Current Phase**: Free Beta Testing (5 contractors)
-**Next Phase**: Paid Pilot (10 companies @ monthly subscription)
-**Future Phase**: Full Monetization with Payment Funnels
+**Status:** 🔴 ALL FEATURES DISABLED - Beta Testing Phase
 
----
-
-## 🎯 Rollout Plan
-
-### Phase 1: Free Beta (CURRENT)
-- **Goal**: Get 5 contractors using the platform for free
-- **Duration**: Until bugs are worked out and feedback is incorporated
-- **All money features**: OFF (Toggle = `false`)
-- **Focus**: Build features, fix bugs, gather feedback
-
-### Phase 2: Paid Pilot
-- **Goal**: 10 companies paying monthly subscriptions
-- **Revenue Model**: Monthly subscription only
-- **Money toggles**: Subscription billing ON, all other revenue OFF
-- **Focus**: Validate willingness to pay, refine pricing
-
-### Phase 3: Full Monetization
-- **Goal**: Scale to 100+ companies
-- **Revenue Models**: Multiple revenue streams active
-- **Money toggles**: All revenue features available
-- **Focus**: Maximize revenue per customer
+**Current Phase:** Phase 0 - Free Beta (5 contractors)
+**Next Phase:** Phase 1 - Subscription Only (10 companies)
+**Future Phase:** Phase 2 - Full Monetization Funnel
 
 ---
 
-## 💸 Revenue Feature Toggles
+## Revenue Streams Overview
 
-All monetary features are controlled by toggles in `/lib/monetization.ts` (to be created).
+### 1. Subscription Tiers
 
-### 1. **Monthly Subscriptions**
-**Status**: 🔴 OFF (Phase 2)
-**Toggle**: `ENABLE_SUBSCRIPTIONS`
+#### Free Tier (Solo)
+- **Price:** $0/month
+- **Limits:**
+  - 1 user only
+  - BYOA (Bring Your Own APIs) required
+  - Full feature access
+  - No team management
+  - No call bidding network access
+- **Target:** Solo electricians, beta testers, proof of concept
 
-**Pricing Tiers** (Planned):
+#### Team Small
+- **Price:** $30/month
+- **Limits:**
+  - Up to 3 users
+  - Choose: BYOA or Managed APIs (2x markup)
+  - Full team features
+  - Call bidding within own team
+  - Basic support
+- **Target:** Small electrical companies, 2-3 person crews
+
+#### Team Medium
+- **Price:** $80/month
+- **Limits:**
+  - Up to 10 users
+  - Choose: BYOA or Managed APIs (2x markup)
+  - Full team features
+  - Call bidding network access
+  - Priority support
+  - Multi-company linking
+- **Target:** Medium electrical contractors, multiple crews
+
+#### Team Large
+- **Price:** $80 base + $10/user beyond 10
+- **Limits:**
+  - Unlimited users
+  - Choose: BYOA or Managed APIs (2x markup)
+  - Enterprise features
+  - Dedicated support
+  - Custom integrations
+  - White-label options (future)
+- **Target:** Large electrical contractors, regional companies
+
+---
+
+## 2. Call Bidding & Alert System Monetization
+
+**Toggle:** `monetization.callBidding.enabled`
+
+### Transaction Fees
+- **Per Claimed Call:** $2-5 flat fee (type-dependent)
+  - Emergency calls: $5
+  - Daytime calls: $3
+  - Scheduled calls: $2
+- **Collected from:** Call claimer (deducted from bonus or invoiced)
+- **When charged:** On successful claim/completion
+
+### Bonus Pool Fee
+- **Percentage:** 10-15% of call bonus amount
+- **Example:** $100 emergency bonus = $10-15 platform fee
+- **Collected from:** Company posting the call
+- **When charged:** On call posting
+
+### Network Access Fee
+- **Monthly:** $50/month per company
+- **Unlocks:** Access to receive calls from connected companies
+- **Value prop:** Expand service area, fill downtime
+- **Free tier:** Can only bid within own company
+
+### Premium Features (Future)
+- **Priority Claiming:** $1 to jump bidding queue
+- **Auto-Accept Zones:** $25/month for geographic auto-claiming
+- **Analytics Dashboard:** $15/month for call performance metrics
+- **Lead Generation:** Companies pay $10-50 per qualified lead sent to network
+
+---
+
+## 3. API Management Service
+
+**Toggle:** `monetization.apiManagement.enabled`
+
+### Bring Your Own APIs (BYOA)
+- **Cost:** Free
+- **User provides:**
+  - OpenAI/Anthropic API keys (for Jake chatbot)
+  - Twilio API keys (SMS/voice)
+  - SendGrid API keys (email)
+  - QuickBooks OAuth credentials
+  - Google Maps API keys
+- **Liability:** User responsible for costs & rate limits
+- **Setup:** User enters keys in Settings > API Configuration
+
+### Managed APIs
+- **Cost:** 2x actual API cost + usage fees
+- **We provide:**
+  - All API keys pre-configured
+  - Centralized billing (one invoice)
+  - Rate limit management
+  - Error handling & retries
+  - Usage dashboard
+  - Cost predictions
+- **Markup breakdown:**
+  - 1x covers actual API costs
+  - 0.5x covers infrastructure (proxies, monitoring, support)
+  - 0.5x profit margin
+- **Billing:** Monthly invoice based on usage tracking
+
+### Example Cost Scenarios
+
+**OpenAI API (GPT-4):**
+- Actual cost: $0.03 per 1K tokens
+- Managed cost: $0.06 per 1K tokens
+- Average monthly use (50 Jake conversations): ~$15 actual, $30 managed
+
+**Twilio SMS:**
+- Actual cost: $0.0079 per SMS
+- Managed cost: $0.0158 per SMS
+- Average monthly use (200 SMS): ~$1.58 actual, $3.16 managed
+
+**Total Typical Monthly API Costs:**
+- BYOA mode: $20-40/month (user pays directly to providers)
+- Managed mode: $40-80/month (user pays us, we pay providers)
+- **Our profit per customer:** $20-40/month
+
+---
+
+## 4. Jake Chatbot Integration
+
+**Toggle:** `monetization.jakeChatbot.enabled`
+
+### Lead Capture & Conversion
+- Jake conversations auto-create customer entities
+- SMS/voice calls logged automatically
+- Appointment booking triggers job creation
+- Lead scoring based on conversation quality
+
+### Monetization Opportunities
+- **Pay-per-lead:** Contractors pay $5-10 per qualified lead from Jake
+- **Conversion bonus:** 15% of job value if Jake books appointment
+- **White-label Jake:** $200/month for custom branded chatbot
+- **Jake network:** Overflow leads routed to paying contractors
+
+### Jake as Lead Funnel
+```
+Customer inquiry → Jake chatbot → Qualification → Lead entity created
+→ If qualified: Book appointment + notify on-call contractor
+→ If overflow: Route to bidding network (we take 15% of bonus)
+→ If outside area: Sell lead to network contractor ($10 fee)
+```
+
+---
+
+## 5. Additional Revenue Opportunities
+
+### Marketplace & Referrals
+- **Vendor referrals:** 5-10% commission on referred purchases
+  - Electrical supplies
+  - Equipment
+  - Insurance
+  - Financing
+- **Directory listing:** $50/month for premium placement
+- **Advertising:** $100-500/month for supplier ads in app
+
+### Data & Analytics
+- **Benchmark reports:** $25/month for industry comparison data
+- **Export services:** $10 per QuickBooks export batch
+- **Historical analysis:** $50 one-time for data migration from old systems
+
+### Training & Support
+- **Onboarding:** $200 one-time setup fee (waived for annual subscriptions)
+- **Training sessions:** $100/hour for team training
+- **Priority support:** $50/month for phone/video support
+- **Custom development:** $150/hour for custom features
+
+---
+
+## Implementation Toggles
+
+All monetization features controlled via `ownerSettings.monetization` object:
+
 ```typescript
-const SUBSCRIPTION_TIERS = {
-  starter: {
-    price: 49,
-    name: 'Starter',
-    features: ['1 company', '3 team members', 'Basic features'],
-    enabled: false
+monetization: {
+  // Master switch - turns ALL money features on/off
+  enabled: false,
+
+  // Subscription system
+  subscriptions: {
+    enabled: false,
+    enforceLimits: false, // If false, all tiers get enterprise features
+    billingProvider: 'stripe', // 'stripe' | 'manual'
   },
-  professional: {
-    price: 99,
-    name: 'Professional',
-    features: ['3 companies', '10 team members', 'All features', 'Priority support'],
-    enabled: false
+
+  // Call bidding fees
+  callBidding: {
+    enabled: false,
+    transactionFee: {
+      emergency: 5.00,
+      daytime: 3.00,
+      scheduled: 2.00
+    },
+    bonusPoolFee: 0.15, // 15%
+    networkAccessFee: 50.00, // per month
   },
-  enterprise: {
-    price: 199,
-    name: 'Enterprise',
-    features: ['Unlimited companies', 'Unlimited team members', 'All features', 'Dedicated support', 'Custom integrations'],
-    enabled: false
+
+  // API management
+  apiManagement: {
+    enabled: false,
+    allowBYOA: true,
+    managedMarkup: 2.0, // 2x multiplier
+    trackUsage: false,
+  },
+
+  // Jake integration
+  jakeChatbot: {
+    enabled: false,
+    leadFee: 7.50,
+    conversionBonus: 0.15, // 15%
+    whitelabelFee: 200.00,
+  },
+
+  // Marketplace
+  marketplace: {
+    enabled: false,
+    referralCommission: 0.08, // 8%
+    premiumListingFee: 50.00,
   }
 }
 ```
 
-**Implementation Locations**:
-- Signup flow: Show pricing page before account creation
-- Settings page: "Upgrade Plan" section
-- Usage limits: Enforce team member and company limits
-- Stripe integration: `/api/stripe/create-subscription`
+---
+
+## Rollout Plan
+
+### Phase 0: Beta Testing (Current)
+**Timeline:** Now - 3 months
+**Users:** 5 contractors (free)
+**Focus:** Bug fixes, feature completion, user feedback
+**Monetization:** ❌ Disabled
+
+**Success Criteria:**
+- All features working smoothly
+- 5 contractors using daily for 30+ days
+- <10 critical bugs per month
+- Positive user feedback
+- Database migration complete
+
+### Phase 1: Subscription Launch
+**Timeline:** Months 4-6
+**Users:** 10 companies (paid subscriptions only)
+**Focus:** Validate pricing, payment processing, support systems
+**Monetization:** ✅ Subscriptions only ($30-80/month)
+
+**Success Criteria:**
+- 10 paying customers acquired
+- <5% monthly churn
+- Payments processing smoothly
+- Support load manageable
+- Positive ROI on first cohort
+
+### Phase 2: Full Monetization
+**Timeline:** Month 7+
+**Users:** Scale to 50+ companies
+**Focus:** Call bidding fees, API management, Jake integration
+**Monetization:** ✅ All revenue streams
+
+**Success Criteria:**
+- 50+ paying customers
+- Multiple revenue streams active
+- $5K+ MRR (Monthly Recurring Revenue)
+- Net margin >60%
+- Proven scalability
 
 ---
 
-### 2. **Work Call Bidding Bonuses**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_CALL_BONUSES`
+## Financial Projections
 
-**How it Works**:
-- Company owner adds bonuses to calls ($25-$100)
-- Team member claims call → earns bonus
-- Platform takes **15% commission** on bonus payouts
-- Weekly payouts via Stripe Connect
+### Conservative Scenario (50 customers at Month 12)
 
-**Example Revenue**:
-- Emergency call: $100 bonus → Platform keeps $15
-- Daytime call: $25 bonus → Platform keeps $3.75
-- 100 calls/week @ avg $50 bonus = **$750/week platform revenue**
+**Subscription Revenue:**
+- 10 Free (solo): $0
+- 20 Team Small: $30 × 20 = $600
+- 15 Team Medium: $80 × 15 = $1,200
+- 5 Team Large (avg 15 users): $130 × 5 = $650
+- **Total MRR:** $2,450
 
-**Implementation Locations**:
-- `work-call-bidding.tsx`: Show/hide bonus amounts based on toggle
-- `lib/store.ts`: `callStats.totalBonusEarned` only tracks if enabled
-- Settings: Payout configuration (bank account, payment schedule)
-- `/api/stripe/process-bonus-payout`: Handle bonus distributions
+**Call Bidding Revenue:**
+- Avg 100 calls/month across network
+- Transaction fees: 100 × $3 avg = $300
+- Bonus pool fees: 100 × $50 avg × 15% = $750
+- Network access: 30 companies × $50 = $1,500
+- **Total MRR:** $2,550
 
----
+**API Management Revenue:**
+- 25 customers on managed APIs
+- Avg profit: $30/customer
+- **Total MRR:** $750
 
-### 3. **Per-Call Transaction Fees**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_TRANSACTION_FEES`
+**Jake Integration Revenue:**
+- 50 leads/month × $7.50 = $375
+- 10 conversions × avg $500 job × 15% = $750
+- **Total MRR:** $1,125
 
-**Fee Structure**:
-- **$0.50 per call** created in the system
-- Charged to company owner when creating call
-- Alternative: Free tier (10 calls/month), paid ($0.50/call after)
+**Total MRR:** $6,875
+**Total ARR:** $82,500
 
-**Example Revenue**:
-- Company creates 200 calls/month → **$100/month in fees**
+**Costs:**
+- API infrastructure: $500/month
+- Hosting (AWS/Vercel): $200/month
+- Support (part-time): $1,000/month
+- Payment processing (3%): $206/month
+- **Total Costs:** $1,906/month
 
-**Implementation Locations**:
-- `createWorkCall()` in `lib/store.ts`: Check balance/billing before creating
-- `/api/stripe/charge-call-fee`: Process $0.50 charge
-- Dashboard: Show "Calls Remaining" counter for free tier
+**Net Profit:** $4,969/month ($59,628/year)
+**Net Margin:** 72%
 
----
+### Aggressive Scenario (200 customers at Month 24)
 
-### 4. **Premium Integrations**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_PREMIUM_INTEGRATIONS`
-
-**Free Integrations**:
-- VAPI (Voice AI)
-- Claude (Photo Analysis)
-- Email/SMTP
-
-**Premium Integrations** (Requires Pro/Enterprise plan):
-- QuickBooks
-- Stripe
-- Google Calendar
-- Microsoft 365
-- Zapier
-- Slack
-
-**Implementation Locations**:
-- `settings.tsx`: Show "Upgrade to unlock" for premium integrations
-- Integration auth flows: Check subscription tier before connecting
+**Total MRR:** $35,000
+**Total ARR:** $420,000
+**Net Profit:** ~$25,000/month ($300,000/year)
 
 ---
 
-### 5. **NEC Database Access**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_NEC_PREMIUM`
+## Key Functions to Implement
 
-**Free Tier**:
-- 10 NEC code lookups per day
-- Basic codes only
-
-**Premium Tier** ($9.99/month add-on):
-- Unlimited lookups
-- Full NEC 2023 database
-- Code history and bookmarking
-- AI-powered code recommendations
-
-**Implementation Locations**:
-- `nec-lookup.tsx`: Show lookup counter and upgrade CTA
-- `/api/nec/lookup`: Check usage limits
-
----
-
-### 6. **Photo Analysis Credits**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_PHOTO_CREDITS`
-
-**Free Tier**:
-- 20 photo analyses per month
-
-**Paid**:
-- $0.25 per photo analysis (pay-as-you-go)
-- Or: Unlimited on Pro/Enterprise plans
-
-**Implementation Locations**:
-- `photo-analysis.tsx`: Show credits remaining
-- `/api/photo/analyze`: Check credits before processing
-- Settings: "Buy More Credits" button
-
----
-
-### 7. **Team Member Seats**
-**Status**: 🔴 OFF (Phase 2)
-**Toggle**: `ENABLE_SEAT_LIMITS`
-
-**Pricing**:
-- Starter: 3 seats included
-- Professional: 10 seats included
-- Additional seats: **$10/month per seat**
-
-**Implementation Locations**:
-- Company management: Block adding members if over limit
-- Settings: "Add Seat" button with pricing
-- Billing: `/api/stripe/add-seat`
-
----
-
-### 8. **Company Network Fees**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_NETWORK_FEES`
-
-**Free**:
-- Link up to 3 companies
-
-**Paid**:
-- Unlimited company linking on Pro/Enterprise
-- Or: $5/month per additional linked company
-
-**Implementation Locations**:
-- `account-menu.tsx`: Block linking if over free limit
-- Settings: Network management with upgrade CTA
-
----
-
-### 9. **White Label / Custom Branding**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_WHITE_LABEL`
-
-**Enterprise Feature Only**:
-- Custom domain (contractor.yourbrand.com)
-- Custom logo and colors
-- Remove AppIo.AI branding
-- **+$99/month**
-
-**Implementation Locations**:
-- `app/layout.tsx`: Load custom branding config
-- Settings: Branding customization panel (Enterprise only)
-
----
-
-### 10. **API Access**
-**Status**: 🔴 OFF (Phase 3)
-**Toggle**: `ENABLE_API_ACCESS`
-
-**Developer Tier**: $29/month
-- REST API access
-- Webhooks
-- 10,000 API calls/month
-- Additional calls: $0.01 per call
-
-**Implementation Locations**:
-- `/api/v1/*`: API routes with authentication
-- Settings: API key generation
-- Dashboard: API usage stats
-
----
-
-## 📊 Revenue Projection Calculator
-
-**Phase 2 - Paid Pilot** (10 companies):
-```
-10 companies × $99/month = $990/month
-Annual: $11,880
-```
-
-**Phase 3 - Scale** (100 companies):
-```
-Subscriptions:
-- 60 companies × $49 = $2,940
-- 30 companies × $99 = $2,970
-- 10 companies × $199 = $1,990
-Subtotal: $7,900/month
-
-Call Bonuses (15% commission):
-- 100 companies × 50 calls/month × $30 avg bonus × 15% = $22,500/month
-
-Transaction Fees:
-- 100 companies × 100 calls/month × $0.50 = $5,000/month
-
-Add-ons (NEC Premium):
-- 40 companies × $9.99 = $399.60/month
-
-Total Monthly: $35,799.60
-Annual: $429,595.20
-```
-
----
-
-## 🔧 Implementation Checklist
-
-### Phase 1 (Current - FREE):
-- [x] Build all core features
-- [x] Work call bidding system
-- [x] Account & company management
-- [x] Set all toggles to `false`
-- [ ] Create `/lib/monetization.ts` config file
-- [ ] Add "Beta Testing - Free" badge to UI
-
-### Phase 2 (Paid Pilot - SUBSCRIPTIONS ONLY):
-- [ ] Create Stripe account
-- [ ] Set up subscription plans
-- [ ] Build `/api/stripe/create-subscription`
-- [ ] Add pricing page before signup
-- [ ] Enable `ENABLE_SUBSCRIPTIONS = true`
-- [ ] Enable `ENABLE_SEAT_LIMITS = true`
-- [ ] Add upgrade CTAs throughout UI
-- [ ] Email 10 target companies with pricing
-
-### Phase 3 (Full Monetization):
-- [ ] Stripe Connect setup for bonus payouts
-- [ ] Enable `ENABLE_CALL_BONUSES = true`
-- [ ] Enable `ENABLE_TRANSACTION_FEES = true`
-- [ ] Enable `ENABLE_PREMIUM_INTEGRATIONS = true`
-- [ ] Enable `ENABLE_NEC_PREMIUM = true`
-- [ ] Enable `ENABLE_PHOTO_CREDITS = true`
-- [ ] Build billing dashboard
-- [ ] Implement usage tracking and limits
-- [ ] Set up automated invoicing
-
----
-
-## 🚨 Important Notes
-
-1. **All money features are OFF by default** - Build first, monetize later
-2. **Store toggles in environment variables** - Easy to turn on/off without code changes
-3. **Test payment flows in Stripe Test Mode** - Before going live
-4. **Grandfather early beta users** - Offer lifetime discount to first 5 contractors
-5. **Compliance**: Ensure PCI compliance for payment processing
-6. **Terms of Service**: Update TOS when enabling paid features
-
----
-
-## 📝 Monetization Config File Location
-
-All toggles will be stored in:
-```
-/lib/monetization.ts
-```
-
-Example structure:
+### Subscription Management
 ```typescript
-export const MONETIZATION_CONFIG = {
-  // Global
-  PHASE: 'BETA', // 'BETA' | 'PILOT' | 'FULL'
+// Check if feature is available for user's tier
+canAccessFeature(feature: string, userTier: string): boolean
 
-  // Features
-  ENABLE_SUBSCRIPTIONS: false,
-  ENABLE_CALL_BONUSES: false,
-  ENABLE_TRANSACTION_FEES: false,
-  ENABLE_PREMIUM_INTEGRATIONS: false,
-  ENABLE_NEC_PREMIUM: false,
-  ENABLE_PHOTO_CREDITS: false,
-  ENABLE_SEAT_LIMITS: false,
-  ENABLE_NETWORK_FEES: false,
-  ENABLE_WHITE_LABEL: false,
-  ENABLE_API_ACCESS: false,
+// Enforce team size limits
+canAddTeamMember(currentSize: number, tier: string): boolean
 
-  // Stripe
-  STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_KEY,
-  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+// Calculate monthly bill
+calculateSubscriptionFee(tier: string, userCount: number): number
 
-  // Pricing
-  SUBSCRIPTION_TIERS: { /* ... */ },
-  CALL_BONUS_COMMISSION: 0.15,
-  TRANSACTION_FEE: 0.50,
-  NEC_PREMIUM_PRICE: 9.99,
-  PHOTO_CREDIT_PRICE: 0.25,
-  SEAT_PRICE: 10,
+// Handle subscription changes
+upgradeSubscription(userId: string, newTier: string): void
+downgradeSubscription(userId: string, newTier: string): void
+```
+
+### Billing Functions
+```typescript
+// Track billable events
+recordCallClaim(callId: string, memberId: string, fee: number): void
+recordAPIUsage(endpoint: string, cost: number): void
+recordLeadGeneration(leadId: string, fee: number): void
+
+// Generate invoices
+generateMonthlyInvoice(companyId: string, month: string): Invoice
+calculateAPIMarkup(actualCost: number, markup: number): number
+
+// Payment processing (Stripe integration)
+createCustomer(companyAccount: CompanyAccount): StripeCustomer
+chargeSubscription(customerId: string, amount: number): Payment
+processRefund(paymentId: string, amount: number): Refund
+```
+
+### Usage Tracking
+```typescript
+// Monitor API usage for billing
+trackOpenAITokens(requestId: string, tokens: number): void
+trackTwilioSMS(messageId: string, cost: number): void
+trackEmailSends(emailId: string, count: number): void
+
+// Generate usage reports
+getMonthlyAPIUsage(companyId: string, month: string): UsageReport
+predictMonthlyAPIcost(companyId: string): number
+```
+
+### Jake Integration
+```typescript
+// Handle Jake webhook
+processJakeConversation(webhookData: any): void
+createLeadFromJake(conversationId: string): Customer
+bookAppointmentFromJake(customerId: string, datetime: Date): Job
+calculateLeadValue(leadData: any): number
+```
+
+---
+
+## Toggle Implementation Strategy
+
+All money features wrapped in conditionals:
+
+```typescript
+// Example: Call claim with optional billing
+const handleClaimCall = (callId: string) => {
+  const call = getIncomingCall(callId)
+  const settings = ownerSettings.monetization
+
+  // Core functionality (always runs)
+  claimCall(callId, userProfile.memberNumber)
+
+  // Billing (only if enabled)
+  if (settings.enabled && settings.callBidding.enabled) {
+    const fee = settings.callBidding.transactionFee[call.callType]
+    recordCallClaim(callId, userProfile.memberNumber, fee)
+    // Show user the fee
+    toast(`Call claimed! Fee: $${fee.toFixed(2)}`)
+  }
 }
 ```
 
 ---
 
-**Last Updated**: 2025-11-14
-**Next Review**: When moving to Phase 2 (Paid Pilot)
+## Database Schema (Future)
+
+When migrating from localStorage to production database:
+
+### Tables Needed
+```sql
+-- Subscription tracking
+subscriptions (id, company_id, tier, status, billing_cycle, next_billing_date)
+
+-- Billing events
+billing_events (id, company_id, type, amount, status, created_at)
+
+-- API usage metering
+api_usage (id, company_id, endpoint, tokens, cost, timestamp)
+
+-- Call bidding transactions
+call_transactions (id, call_id, member_id, fee, status, timestamp)
+
+-- Jake leads
+jake_leads (id, conversation_id, customer_id, value, status, created_at)
+
+-- Invoices
+invoices (id, company_id, amount, items, status, due_date, paid_date)
+```
+
+---
+
+## Notes for Future Implementation
+
+1. **Payment Processing:** Use Stripe for subscription billing and usage-based charges
+2. **Webhooks:** Set up Stripe webhooks for payment events
+3. **Dunning:** Automated retry logic for failed payments
+4. **Tax Handling:** Implement tax calculation for different jurisdictions
+5. **Refund Policy:** 30-day money-back guarantee for subscriptions
+6. **Annual Discounts:** 20% off for annual subscriptions (add to pricing tiers)
+7. **Free Trial:** 14-day free trial for Team Small/Medium tiers
+8. **Grandfather Clause:** Beta testers get 50% off forever
+9. **Referral Program:** $50 credit for each successful referral
+10. **Compliance:** Terms of service, privacy policy, GDPR compliance
+
+---
+
+**Last Updated:** 2025-11-14
+**Document Owner:** Jenkintown Electricity
+**Status:** Living document - update as strategy evolves

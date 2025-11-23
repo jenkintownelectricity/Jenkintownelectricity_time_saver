@@ -30,10 +30,20 @@ AppIo.AI is building the world's largest construction knowledge database - an AI
 - Voice or text search
 - Expandable to other construction codes and regulations
 
+### 💼 Business Management
+- **Estimates**: Create professional estimates with PDF export
+- **Work Orders**: Track job progress and assignments
+- **Invoices**: Generate invoices with payment tracking
+- **QuickBooks Integration**: Seamlessly sync estimates and invoices
+- **Email Customers**: Send documents directly to clients
+- **Duplicate Documents**: Quickly create copies of existing estimates/invoices
+- **Company Profiles**: Support for multiple companies/DBAs
+- **PDF Generation**: Professional-looking documents with your branding
+
 ### 🚀 Coming Soon
-- Job tracking and management
-- Material cost estimation
-- Project collaboration tools
+- Payment processing integration (Stripe)
+- Google Calendar synchronization
+- Automated review requests
 - Multi-trade support (plumbing, HVAC, carpentry, etc.)
 - Offline mode for remote job sites
 
@@ -84,6 +94,18 @@ Create a `.env.local` file:
 ```env
 NEXT_PUBLIC_VAPI_KEY=your_vapi_key_here
 ANTHROPIC_API_KEY=your_anthropic_key_here
+```
+
+3. **QuickBooks Integration** (Optional) - For syncing estimates and invoices
+   - See [QUICKBOOKS_SETUP.md](./QUICKBOOKS_SETUP.md) for detailed instructions
+   - Create app at [developer.intuit.com](https://developer.intuit.com)
+   - Add credentials to environment variables
+   - Configure redirect URI for OAuth
+
+```env
+QUICKBOOKS_CLIENT_ID=your_quickbooks_client_id
+QUICKBOOKS_CLIENT_SECRET=your_quickbooks_client_secret
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 ```
 
 ## 🎨 Design Philosophy

@@ -1,483 +1,406 @@
--- ============================================================================
--- AppIo.AI - Complete Database Schema
--- ============================================================================
--- Flexible, permission-based architecture for infinite customization
--- Run this ONCE in Supabase SQL Editor for initial setup
--- ============================================================================
+-- ============================================
+-- AppIo.AI PostgreSQL Database Schema
+-- Portable schema - run this in any PostgreSQL instance
+-- ============================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ============================================================================
--- USER PROFILES (extends Supabase auth.users)
--- ============================================================================
-CREATE TABLE public.user_profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+-- ============================================
+-- CORE TABLES
+-- ============================================
 
-  -- Basic Info
-  full_name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT,
-  avatar_url TEXT,
-
-  -- Role in platform
-  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin', 'owner')),
-
-  -- Metadata
-  onboarding_completed BOOLEAN DEFAULT false,
-  last_seen_at TIMESTAMPTZ,
-
-  -- Infinite custom fields
-  preferences JSONB DEFAULT '{}',
-  metadata JSONB DEFAULT '{}',
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- Users table (for multi-user support in future)
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================================================
--- COMPANIES (Multi-tenant support)
--- ============================================================================
-CREATE TABLE public.companies (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-
-  -- Company Info
-  name TEXT NOT NULL,
-  code TEXT UNIQUE NOT NULL, -- ABC-DEF format
-
-  -- Ownership
-  owner_id UUID REFERENCES public.user_profiles(id) ON DELETE RESTRICT NOT NULL,
-
-  -- Company Settings (flexible)
-  settings JSONB DEFAULT '{
-    "bidMode": "first-come",
-    "emergencyBonus": 100,
-    "daytimeBonus": 25,
-    "scheduledBonus": 50,
-    "emergencyTimeout": 5,
-    "daytimeTimeout": 15,
-    "scheduledTimeout": 15
-  }',
-
-  -- Network
-  linked_companies JSONB DEFAULT '[]', -- Array of company IDs/codes
-
-  -- Status
-  is_active BOOLEAN DEFAULT true,
-  archived BOOLEAN DEFAULT false,
-
-  -- Infinite custom fields
-  metadata JSONB DEFAULT '{}',
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- Entity Types table (stores entity configurations)
+CREATE TABLE entity_types (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    name_plural VARCHAR(100) NOT NULL,
+    icon VARCHAR(50),
+    color VARCHAR(50),
+    enabled BOOLEAN DEFAULT true,
+    fields JSONB NOT NULL,
+    relationships JSONB,
+    features JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================================================
--- COMPANY MEMBERS (Many-to-Many relationship)
--- ============================================================================
-CREATE TABLE public.company_members (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+-- Entities table (stores all business entities)
+CREATE TABLE entities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entity_type VARCHAR(50) NOT NULL REFERENCES entity_types(id),
+    status VARCHAR(50) DEFAULT 'active',
+    data JSONB NOT NULL DEFAULT '{}',
+    relationships JSONB DEFAULT '{}',
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  -- Relationships
-  company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE NOT NULL,
-
-  -- Member Info
-  member_number TEXT, -- M2501234 format
-  job_title TEXT,
-
-  -- Permissions within this company
-  role TEXT DEFAULT 'member' CHECK (role IN ('member', 'manager', 'admin', 'owner')),
-  permissions JSONB DEFAULT '{}',
-
-  -- Status
-  is_active BOOLEAN DEFAULT true,
-  is_on_call BOOLEAN DEFAULT false,
-
-  -- Timestamps
-  joined_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-  -- Ensure one user can't join same company twice
-  UNIQUE(company_id, user_id)
+    -- Indexes for performance
+    INDEX idx_entity_type (entity_type),
+    INDEX idx_entity_status (status),
+    INDEX idx_entity_created_at (created_at)
 );
 
--- ============================================================================
--- CONTACTS (Universal - replaces clients/vendors/contractors/etc.)
--- ============================================================================
-CREATE TABLE public.contacts (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+-- Contact Addresses table
+CREATE TABLE contact_addresses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- Billing, Shipping, Project Site, Office, Home, Other
+    is_primary BOOLEAN DEFAULT false,
+    street1 VARCHAR(255) NOT NULL,
+    street2 VARCHAR(255),
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(50) NOT NULL,
+    zip VARCHAR(20) NOT NULL,
+    country VARCHAR(100) DEFAULT 'USA',
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  -- Ownership (multi-tenant)
-  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE NOT NULL,
-  company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
-
-  -- Basic Info
-  name TEXT NOT NULL,
-  email TEXT,
-  phone TEXT,
-  mobile TEXT,
-  address TEXT,
-  city TEXT,
-  state TEXT,
-  zip TEXT,
-
-  -- ===================================================================
-  -- PERMISSION FLAGS (Multiple roles simultaneously!)
-  -- ===================================================================
-  -- Turn these on/off to give contacts different roles
-  -- Same person can be client AND vendor AND contractor!
-  is_client BOOLEAN DEFAULT false,
-  is_contractor_1099 BOOLEAN DEFAULT false,
-  is_employee BOOLEAN DEFAULT false,
-  is_vendor BOOLEAN DEFAULT false,
-  is_subcontractor BOOLEAN DEFAULT false,
-  is_supplier BOOLEAN DEFAULT false,
-  is_lead BOOLEAN DEFAULT false,
-  is_partner BOOLEAN DEFAULT false,
-
-  -- Financial Info
-  billing_address TEXT,
-  tax_id TEXT,
-  payment_terms TEXT,
-
-  -- Status
-  is_active BOOLEAN DEFAULT true,
-  archived BOOLEAN DEFAULT false,
-
-  -- Rating/Notes
-  rating DECIMAL(2,1) CHECK (rating >= 0 AND rating <= 5),
-  notes TEXT,
-  tags JSONB DEFAULT '[]',
-
-  -- ===================================================================
-  -- INFINITE CUSTOMIZATION
-  -- ===================================================================
-  -- Store ANY additional fields here without changing schema
-  custom_fields JSONB DEFAULT '{}',
-
-  -- Examples of what can go in custom_fields:
-  -- {
-  --   "license_number": "12345",
-  --   "insurance_expiry": "2025-12-31",
-  --   "specialty": "residential",
-  --   "referral_source": "google",
-  --   "birthday": "1990-01-01",
-  --   ... anything you want!
-  -- }
-
-  -- Metadata
-  metadata JSONB DEFAULT '{}',
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+    INDEX idx_address_entity (entity_id),
+    INDEX idx_address_primary (is_primary)
 );
 
--- ============================================================================
--- FINANCIAL DOCUMENTS (Universal - replaces invoices/estimates/work_orders/etc.)
--- ============================================================================
-CREATE TABLE public.financial_documents (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+-- Linked Contacts table
+CREATE TABLE linked_contacts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    role VARCHAR(100) NOT NULL, -- Primary Contact, Billing Contact, etc.
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    title VARCHAR(100),
+    notes TEXT,
+    is_primary BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  -- Ownership (multi-tenant)
-  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE NOT NULL,
-  company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
-  contact_id UUID REFERENCES public.contacts(id) ON DELETE SET NULL,
-
-  -- ===================================================================
-  -- DOCUMENT TYPE (Flexible - add new types anytime!)
-  -- ===================================================================
-  document_type TEXT NOT NULL CHECK (document_type IN (
-    'invoice',
-    'estimate',
-    'quote',
-    'work_order',
-    'proposal',
-    'contract',
-    'receipt',
-    'credit_note',
-    'purchase_order'
-  )),
-
-  -- Document Info
-  document_number TEXT NOT NULL, -- INV-001, EST-001, WO-001, etc.
-  title TEXT,
-  description TEXT,
-
-  -- Dates
-  document_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  due_date DATE,
-  valid_until DATE, -- for estimates/quotes
-
-  -- Status
-  status TEXT DEFAULT 'draft' CHECK (status IN (
-    'draft',
-    'sent',
-    'viewed',
-    'approved',
-    'rejected',
-    'in_progress',
-    'completed',
-    'paid',
-    'partially_paid',
-    'overdue',
-    'cancelled',
-    'void'
-  )),
-
-  -- ===================================================================
-  -- LINE ITEMS (Flexible array)
-  -- ===================================================================
-  line_items JSONB DEFAULT '[]',
-  -- Example structure:
-  -- [
-  --   {
-  --     "description": "Electrical panel upgrade",
-  --     "quantity": 1,
-  --     "unit_price": 1200.00,
-  --     "total": 1200.00,
-  --     "tax_rate": 0.08
-  --   },
-  --   ...
-  -- ]
-
-  -- Financial Totals
-  subtotal DECIMAL(12,2) DEFAULT 0,
-  tax_rate DECIMAL(5,4) DEFAULT 0,
-  tax_amount DECIMAL(12,2) DEFAULT 0,
-  discount_amount DECIMAL(12,2) DEFAULT 0,
-  total DECIMAL(12,2) NOT NULL DEFAULT 0,
-
-  -- Payment tracking
-  amount_paid DECIMAL(12,2) DEFAULT 0,
-  balance_due DECIMAL(12,2) GENERATED ALWAYS AS (total - amount_paid) STORED,
-
-  -- ===================================================================
-  -- FEATURES ENABLED (Turn features on/off per document type)
-  -- ===================================================================
-  features_enabled JSONB DEFAULT '{}',
-  -- Examples:
-  -- {
-  --   "allow_partial_payment": true,
-  --   "require_signature": false,
-  --   "send_reminders": true,
-  --   "track_materials": true,
-  --   "show_labor_hours": false
-  -- }
-
-  -- Relationships
-  related_documents JSONB DEFAULT '[]', -- Links to other document IDs
-
-  -- Files/Attachments
-  attachments JSONB DEFAULT '[]',
-
-  -- Status tracking
-  is_recurring BOOLEAN DEFAULT false,
-  recurrence_pattern JSONB,
-
-  archived BOOLEAN DEFAULT false,
-
-  -- ===================================================================
-  -- INFINITE CUSTOMIZATION
-  -- ===================================================================
-  custom_fields JSONB DEFAULT '{}',
-
-  -- Metadata
-  metadata JSONB DEFAULT '{}',
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  sent_at TIMESTAMPTZ,
-  paid_at TIMESTAMPTZ,
-
-  -- Unique constraint for document numbers per company
-  UNIQUE(company_id, document_type, document_number)
+    INDEX idx_linked_contact_entity (entity_id),
+    INDEX idx_linked_contact_primary (is_primary)
 );
 
--- ============================================================================
--- WORK CALLS (Uber-style job bidding system)
--- ============================================================================
-CREATE TABLE public.work_calls (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+-- Comments table
+CREATE TABLE comments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id),
+    user_name VARCHAR(255) NOT NULL,
+    text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  -- Ownership
-  company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE NOT NULL,
-  created_by_user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
-
-  -- Call Type
-  call_type TEXT NOT NULL CHECK (call_type IN ('emergency', 'daytime', 'scheduled')),
-
-  -- Call Info
-  title TEXT NOT NULL,
-  description TEXT,
-  location TEXT,
-
-  -- Customer (can link to contact or store directly)
-  contact_id UUID REFERENCES public.contacts(id) ON DELETE SET NULL,
-  customer_name TEXT,
-  customer_phone TEXT,
-  customer_email TEXT,
-
-  -- Bidding
-  bonus DECIMAL(10,2) DEFAULT 0,
-  bid_mode TEXT DEFAULT 'first-come' CHECK (bid_mode IN ('first-come', 'bidding')),
-  bids JSONB DEFAULT '[]', -- Array of bid objects
-
-  -- Status
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'claimed', 'in_progress', 'completed', 'expired', 'cancelled')),
-
-  -- Claiming
-  claimed_by_user_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
-  claimed_at TIMESTAMPTZ,
-
-  -- Timing
-  expires_at TIMESTAMPTZ NOT NULL,
-  scheduled_for TIMESTAMPTZ, -- For scheduled calls
-
-  -- Completion
-  completed_at TIMESTAMPTZ,
-  completion_notes TEXT,
-
-  -- Link to financial document
-  related_document_id UUID REFERENCES public.financial_documents(id) ON DELETE SET NULL,
-
-  -- Custom fields
-  custom_fields JSONB DEFAULT '{}',
-  metadata JSONB DEFAULT '{}',
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+    INDEX idx_comment_entity (entity_id),
+    INDEX idx_comment_created (created_at)
 );
 
--- ============================================================================
--- CALL STATISTICS (Track performance per user/company)
--- ============================================================================
-CREATE TABLE public.call_statistics (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+-- Attachments table
+CREATE TABLE attachments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    url TEXT NOT NULL,
+    type VARCHAR(100),
+    size BIGINT,
+    uploaded_by UUID REFERENCES users(id),
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  -- Ownership
-  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
-  company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE,
-
-  -- Stats
-  total_calls INTEGER DEFAULT 0,
-  claimed_calls INTEGER DEFAULT 0,
-  completed_calls INTEGER DEFAULT 0,
-  expired_calls INTEGER DEFAULT 0,
-  cancelled_calls INTEGER DEFAULT 0,
-
-  -- Performance
-  total_bonus_earned DECIMAL(12,2) DEFAULT 0,
-  average_response_time_seconds INTEGER DEFAULT 0,
-  success_rate DECIMAL(5,2) DEFAULT 0,
-
-  -- Breakdown by type
-  emergency_calls INTEGER DEFAULT 0,
-  daytime_calls INTEGER DEFAULT 0,
-  scheduled_calls INTEGER DEFAULT 0,
-
-  -- Period
-  period_start DATE NOT NULL,
-  period_end DATE NOT NULL,
-
-  -- Metadata
-  metadata JSONB DEFAULT '{}',
-
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-  -- Ensure one record per user/company per period
-  UNIQUE(user_id, company_id, period_start, period_end)
+    INDEX idx_attachment_entity (entity_id)
 );
 
--- ============================================================================
--- INDEXES (Performance optimization)
--- ============================================================================
+-- History/Audit table
+CREATE TABLE entity_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id),
+    user_name VARCHAR(255) NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    field VARCHAR(100),
+    old_value TEXT,
+    new_value TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
--- User profiles
-CREATE INDEX idx_user_profiles_email ON public.user_profiles(email);
-CREATE INDEX idx_user_profiles_role ON public.user_profiles(role);
+    INDEX idx_history_entity (entity_id),
+    INDEX idx_history_created (created_at)
+);
 
--- Companies
-CREATE INDEX idx_companies_owner_id ON public.companies(owner_id);
-CREATE INDEX idx_companies_code ON public.companies(code);
-CREATE INDEX idx_companies_active ON public.companies(is_active) WHERE is_active = true;
+-- ============================================
+-- MY CONTRACTORS TABLES
+-- ============================================
 
--- Company members
-CREATE INDEX idx_company_members_company_id ON public.company_members(company_id);
-CREATE INDEX idx_company_members_user_id ON public.company_members(user_id);
-CREATE INDEX idx_company_members_active ON public.company_members(is_active) WHERE is_active = true;
+-- My Contractors (contractors you work FOR as a subcontractor)
+CREATE TABLE my_contractors (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    company VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    payment_terms VARCHAR(50) DEFAULT 'Net 30',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Contacts
-CREATE INDEX idx_contacts_user_id ON public.contacts(user_id);
-CREATE INDEX idx_contacts_company_id ON public.contacts(company_id);
-CREATE INDEX idx_contacts_email ON public.contacts(email);
-CREATE INDEX idx_contacts_phone ON public.contacts(phone);
-CREATE INDEX idx_contacts_is_client ON public.contacts(is_client) WHERE is_client = true;
-CREATE INDEX idx_contacts_is_vendor ON public.contacts(is_vendor) WHERE is_vendor = true;
-CREATE INDEX idx_contacts_active ON public.contacts(is_active) WHERE is_active = true;
+-- Estimates sent to contractors
+CREATE TABLE my_contractor_estimates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    contractor_id UUID NOT NULL REFERENCES my_contractors(id) ON DELETE CASCADE,
+    number VARCHAR(100) NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
+    estimate_fee DECIMAL(12, 2) DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'Draft',
+    description TEXT,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expiry_date TIMESTAMP,
+    terms_and_conditions TEXT,
+    include_terms BOOLEAN DEFAULT true,
+    estimate_fee_invoice_id UUID,
+    estimate_fee_paid BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
--- Financial documents
-CREATE INDEX idx_financial_docs_user_id ON public.financial_documents(user_id);
-CREATE INDEX idx_financial_docs_company_id ON public.financial_documents(company_id);
-CREATE INDEX idx_financial_docs_contact_id ON public.financial_documents(contact_id);
-CREATE INDEX idx_financial_docs_type ON public.financial_documents(document_type);
-CREATE INDEX idx_financial_docs_status ON public.financial_documents(status);
-CREATE INDEX idx_financial_docs_date ON public.financial_documents(document_date);
-CREATE INDEX idx_financial_docs_number ON public.financial_documents(document_number);
+    INDEX idx_contractor_estimate (contractor_id)
+);
 
--- Work calls
-CREATE INDEX idx_work_calls_company_id ON public.work_calls(company_id);
-CREATE INDEX idx_work_calls_created_by ON public.work_calls(created_by_user_id);
-CREATE INDEX idx_work_calls_claimed_by ON public.work_calls(claimed_by_user_id);
-CREATE INDEX idx_work_calls_contact_id ON public.work_calls(contact_id);
-CREATE INDEX idx_work_calls_status ON public.work_calls(status);
-CREATE INDEX idx_work_calls_type ON public.work_calls(call_type);
-CREATE INDEX idx_work_calls_expires_at ON public.work_calls(expires_at);
-CREATE INDEX idx_work_calls_active ON public.work_calls(status) WHERE status = 'active';
+-- Invoices sent to contractors
+CREATE TABLE my_contractor_invoices (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    contractor_id UUID NOT NULL REFERENCES my_contractors(id) ON DELETE CASCADE,
+    number VARCHAR(100) NOT NULL,
+    amount DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'Draft',
+    description TEXT,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    due_date TIMESTAMP,
+    terms_and_conditions TEXT,
+    include_terms BOOLEAN DEFAULT true,
+    related_estimate_id UUID REFERENCES my_contractor_estimates(id),
+    is_estimate_fee_invoice BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
--- ============================================================================
--- UPDATED_AT TRIGGERS (Auto-update timestamps)
--- ============================================================================
+    INDEX idx_contractor_invoice (contractor_id)
+);
 
+-- Work items for contractors
+CREATE TABLE my_contractor_work (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    contractor_id UUID NOT NULL REFERENCES my_contractors(id) ON DELETE CASCADE,
+    job_number VARCHAR(100) NOT NULL,
+    description TEXT,
+    amount DECIMAL(12, 2) NOT NULL,
+    status VARCHAR(50) DEFAULT 'In Progress',
+    start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completion_date TIMESTAMP,
+    payment_date TIMESTAMP,
+    related_estimate_id UUID REFERENCES my_contractor_estimates(id),
+    related_invoice_id UUID REFERENCES my_contractor_invoices(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_contractor_work (contractor_id)
+);
+
+-- ============================================
+-- PAYMENT & REVIEW LINKS TABLES
+-- ============================================
+
+-- Payment methods (Get Paid Now)
+CREATE TABLE payment_methods (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL, -- 'link' or 'qr'
+    value TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Review links (Get Review Now)
+CREATE TABLE review_methods (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL, -- 'link' or 'qr'
+    value TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- SETTINGS TABLE
+-- ============================================
+
+CREATE TABLE app_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key VARCHAR(100) UNIQUE NOT NULL,
+    value JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- FUNCTIONS & TRIGGERS
+-- ============================================
+
+-- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ language 'plpgsql';
 
-CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON public.user_profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Apply updated_at trigger to all relevant tables
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON public.companies
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_entity_types_updated_at BEFORE UPDATE ON entity_types
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_company_members_updated_at BEFORE UPDATE ON public.company_members
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_entities_updated_at BEFORE UPDATE ON entities
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_contacts_updated_at BEFORE UPDATE ON public.contacts
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_contact_addresses_updated_at BEFORE UPDATE ON contact_addresses
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_financial_documents_updated_at BEFORE UPDATE ON public.financial_documents
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_linked_contacts_updated_at BEFORE UPDATE ON linked_contacts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_work_calls_updated_at BEFORE UPDATE ON public.work_calls
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_my_contractors_updated_at BEFORE UPDATE ON my_contractors
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ============================================================================
--- SCHEMA COMPLETE!
--- ============================================================================
--- Next steps:
--- 1. Run this file in Supabase SQL Editor
--- 2. Run migrations/002_row_level_security.sql for security policies
--- 3. Run migrations/003_seed_data.sql for demo data (optional)
--- ============================================================================
+CREATE TRIGGER update_my_contractor_estimates_updated_at BEFORE UPDATE ON my_contractor_estimates
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_my_contractor_invoices_updated_at BEFORE UPDATE ON my_contractor_invoices
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_my_contractor_work_updated_at BEFORE UPDATE ON my_contractor_work
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_app_settings_updated_at BEFORE UPDATE ON app_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- INITIAL DATA SEED
+-- ============================================
+
+-- Insert default entity types
+INSERT INTO entity_types (id, name, name_plural, icon, color, enabled, fields, relationships, features)
+VALUES
+    ('customer', 'Customer', 'Customers', 'user', '#3b82f6', true,
+     '[]'::jsonb, '{}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb),
+
+    ('vendor', 'Vendor', 'Vendors', 'truck', '#06b6d4', true,
+     '[]'::jsonb, '{}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb),
+
+    ('subcontractor', 'Subcontractor', 'Subcontractors', 'users', '#ec4899', true,
+     '[]'::jsonb, '{}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb),
+
+    ('official', 'Official/Inspector', 'Officials & Inspectors', 'shield', '#6366f1', true,
+     '[]'::jsonb, '{"jobs": {"type": "many-to-many", "targetEntity": "job", "enabled": true}}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb),
+
+    ('job', 'Job', 'Jobs', 'briefcase', '#10b981', true,
+     '[]'::jsonb, '{}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb),
+
+    ('estimate', 'Estimate', 'Estimates', 'calculator', '#f59e0b', true,
+     '[]'::jsonb, '{}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb),
+
+    ('workOrder', 'Work Order', 'Work Orders', 'clipboard', '#8b5cf6', true,
+     '[]'::jsonb, '{}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb),
+
+    ('invoice', 'Invoice', 'Invoices', 'file-text', '#ef4444', true,
+     '[]'::jsonb, '{}'::jsonb,
+     '{"create": true, "read": true, "update": true, "delete": true, "export": true, "import": true, "duplicate": true, "archive": true, "comments": true, "attachments": true, "history": true, "notifications": true}'::jsonb)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- HELPFUL QUERIES FOR MANAGEMENT
+-- ============================================
+
+-- View all entities with their addresses
+CREATE OR REPLACE VIEW v_entities_with_addresses AS
+SELECT
+    e.id,
+    e.entity_type,
+    e.data,
+    json_agg(
+        json_build_object(
+            'id', ca.id,
+            'type', ca.type,
+            'isPrimary', ca.is_primary,
+            'street1', ca.street1,
+            'street2', ca.street2,
+            'city', ca.city,
+            'state', ca.state,
+            'zip', ca.zip,
+            'country', ca.country,
+            'notes', ca.notes
+        )
+    ) FILTER (WHERE ca.id IS NOT NULL) as addresses
+FROM entities e
+LEFT JOIN contact_addresses ca ON e.id = ca.entity_id
+GROUP BY e.id, e.entity_type, e.data;
+
+-- View all entities with their linked contacts
+CREATE OR REPLACE VIEW v_entities_with_contacts AS
+SELECT
+    e.id,
+    e.entity_type,
+    e.data,
+    json_agg(
+        json_build_object(
+            'id', lc.id,
+            'name', lc.name,
+            'role', lc.role,
+            'email', lc.email,
+            'phone', lc.phone,
+            'title', lc.title,
+            'isPrimary', lc.is_primary,
+            'notes', lc.notes
+        )
+    ) FILTER (WHERE lc.id IS NOT NULL) as linked_contacts
+FROM entities e
+LEFT JOIN linked_contacts lc ON e.id = lc.entity_id
+GROUP BY e.id, e.entity_type, e.data;
+
+-- ============================================
+-- INDEXES FOR PERFORMANCE
+-- ============================================
+
+-- Full text search on entity data
+CREATE INDEX idx_entities_data_gin ON entities USING GIN (data);
+
+-- Search on contact names and companies
+CREATE INDEX idx_entities_data_name ON entities ((data->>'name'));
+CREATE INDEX idx_entities_data_company ON entities ((data->>'company'));
+
+-- ============================================
+-- BACKUP & RESTORE COMMANDS (for reference)
+-- ============================================
+
+-- To backup your database:
+-- pg_dump -h localhost -U your_username -d appio_ai > backup.sql
+
+-- To restore your database:
+-- psql -h localhost -U your_username -d appio_ai < backup.sql
+
+-- ============================================
+-- COMPLETION MESSAGE
+-- ============================================
+
+-- Database schema created successfully!
+-- You can now run this script in any PostgreSQL instance (pgAdmin, psql, cloud providers, etc.)
+-- The database is fully portable and you own all the data.

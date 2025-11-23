@@ -20,6 +20,7 @@ import {
   Settings as SettingsIcon,
   Shield
 } from 'lucide-react'
+import QuickBooksConnector from './quickbooks-connector'
 
 export default function Settings() {
   const { setCurrentSection, apiKeys, integrations, ownerSettings, setApiKey, setIntegration, setOwnerSetting, loadSettings } = useAppStore()
@@ -177,10 +178,13 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Integration priorities based on contractor research:
-          - Phase 1 (Core): QuickBooks, Google Calendar, Stripe, Gmail
-          - Phase 2 (Growth): Zapier, Mailchimp, Google Drive
-          - Phase 3 (Team): Slack, MS Teams, NiceJob, Broadly
+      {/* QuickBooks Integration */}
+      <QuickBooksConnector />
+
+      {/* TODO: Update integrations tab with research-based priorities
+          - Phase 1: QuickBooks ✓, Google Calendar, Stripe, Gmail
+          - Phase 2: Zapier, Mailchimp, Google Drive
+          - Phase 3: Slack, MS Teams, NiceJob, Broadly
       */}
 
       {/* Zapier Integration */}
@@ -390,6 +394,40 @@ export default function Settings() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">On-Call Emergency System</h3>
+              <p className="text-sm text-muted-foreground">
+                Enable the on-call status indicator and emergency alert system on your home page.
+                Perfect for businesses that need 24/7 emergency coverage.
+              </p>
+            </div>
+            <Button
+              variant={ownerSettings.onCallFeatureEnabled ? "default" : "outline"}
+              onClick={() => setOwnerSetting('onCallFeatureEnabled', !ownerSettings.onCallFeatureEnabled)}
+              className="ml-4"
+            >
+              {ownerSettings.onCallFeatureEnabled ? "ON" : "OFF"}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">Team/Squad Management</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage your entire team in one place - employees, 1099s, subs, and contractors you work for.
+                Toggle on-call availability, quick filtering, and better communication.
+              </p>
+            </div>
+            <Button
+              variant={ownerSettings.teamManagementEnabled ? "default" : "outline"}
+              onClick={() => setOwnerSetting('teamManagementEnabled', !ownerSettings.teamManagementEnabled)}
+              className="ml-4"
+            >
+              {ownerSettings.teamManagementEnabled ? "ON" : "OFF"}
+            </Button>
+          </div>
+
           <div className="flex items-center justify-between p-4 bg-background rounded-lg border">
             <div className="flex-1">
               <h3 className="font-semibold text-foreground mb-1">Provide Default API Keys</h3>

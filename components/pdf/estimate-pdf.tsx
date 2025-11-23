@@ -1,211 +1,275 @@
-'use client'
-
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
-import { EstimateDocument } from '@/lib/types/documents'
-import { formatCurrency, formatDate } from '@/lib/utils/document-utils'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { EstimateDocument } from '@/lib/line-items'
+import { CompanyProfile } from '@/lib/company-profiles'
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'Helvetica',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 30,
+    borderBottom: '2 solid #333',
+    paddingBottom: 15,
   },
-  title: {
+  logo: {
+    width: 80,
+    height: 80,
+  },
+  companyInfo: {
+    fontSize: 9,
+    color: '#555',
+  },
+  documentTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 5,
   },
   documentNumber: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 12,
+    color: '#555',
   },
   section: {
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 8,
     color: '#333',
   },
   row: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 5,
   },
   label: {
-    width: 100,
     fontWeight: 'bold',
+    width: '30%',
   },
   value: {
-    flex: 1,
+    width: '70%',
   },
   table: {
+    marginTop: 10,
     marginBottom: 20,
   },
   tableHeader: {
     flexDirection: 'row',
-    borderBottomWidth: 2,
-    borderBottomColor: '#000',
-    paddingBottom: 5,
-    marginBottom: 10,
+    backgroundColor: '#333',
+    color: '#fff',
+    padding: 8,
     fontWeight: 'bold',
+    fontSize: 9,
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottom: '1 solid #ddd',
+    padding: 8,
+    fontSize: 9,
   },
-  col1: { width: '10%' },
-  col2: { width: '40%' },
+  tableRowAlt: {
+    flexDirection: 'row',
+    backgroundColor: '#f9f9f9',
+    borderBottom: '1 solid #ddd',
+    padding: 8,
+    fontSize: 9,
+  },
+  col1: { width: '40%' },
+  col2: { width: '15%', textAlign: 'right' },
   col3: { width: '15%', textAlign: 'right' },
-  col4: { width: '15%', textAlign: 'right' },
-  col5: { width: '20%', textAlign: 'right' },
-  totals: {
+  col4: { width: '15%', textAlign: 'center' },
+  col5: { width: '15%', textAlign: 'right' },
+  totalsSection: {
     marginTop: 20,
-    alignItems: 'flex-end',
+    marginLeft: 'auto',
+    width: '50%',
   },
   totalRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 5,
-    width: 200,
-  },
-  totalLabel: {
-    flex: 1,
-    textAlign: 'right',
-    marginRight: 20,
-  },
-  totalValue: {
-    width: 80,
-    textAlign: 'right',
+    paddingHorizontal: 10,
   },
   grandTotal: {
-    fontSize: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTop: '2 solid #333',
     fontWeight: 'bold',
-    borderTopWidth: 2,
-    borderTopColor: '#000',
-    paddingTop: 5,
-  },
-  notes: {
-    marginTop: 30,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
-    fontSize: 10,
+    fontSize: 12,
+    paddingHorizontal: 10,
   },
   footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
-    textAlign: 'center',
-    fontSize: 10,
+    marginTop: 30,
+    paddingTop: 20,
+    borderTop: '1 solid #ddd',
+    fontSize: 8,
     color: '#666',
+  },
+  badge: {
+    backgroundColor: '#fef3c7',
+    color: '#92400e',
+    padding: '4 8',
+    borderRadius: 4,
+    fontSize: 8,
+    fontWeight: 'bold',
   },
 })
 
 interface EstimatePDFProps {
   estimate: EstimateDocument
+  company: CompanyProfile
 }
 
-export const EstimatePDF: React.FC<EstimatePDFProps> = ({ estimate }) => (
-  <Document>
-    <Page size="A4" style={styles.page}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>ESTIMATE</Text>
-        <Text style={styles.documentNumber}>{estimate.documentNumber}</Text>
-      </View>
-
-      {/* Company Info - Placeholder */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>From:</Text>
-        <Text>Your Company Name</Text>
-        <Text>123 Business St</Text>
-        <Text>City, State 12345</Text>
-        <Text>Phone: (555) 123-4567</Text>
-      </View>
-
-      {/* Customer Info */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>To:</Text>
-        <Text>{estimate.customerName}</Text>
-        <Text>{estimate.customerEmail}</Text>
-        <Text>{estimate.customerPhone}</Text>
-        <Text>{estimate.serviceAddress}</Text>
-      </View>
-
-      {/* Estimate Details */}
-      <View style={styles.section}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Date:</Text>
-          <Text style={styles.value}>{formatDate(estimate.createdAt)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Valid Until:</Text>
-          <Text style={styles.value}>{formatDate(estimate.validUntil)}</Text>
-        </View>
-      </View>
-
-      {/* Line Items Table */}
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.col1}>Qty</Text>
-          <Text style={styles.col2}>Description</Text>
-          <Text style={styles.col3}>Rate</Text>
-          <Text style={styles.col4}>Tax</Text>
-          <Text style={styles.col5}>Amount</Text>
-        </View>
-        {estimate.lineItems.map((item) => (
-          <View key={item.id} style={styles.tableRow}>
-            <Text style={styles.col1}>{item.quantity}</Text>
-            <Text style={styles.col2}>{item.description}</Text>
-            <Text style={styles.col3}>{formatCurrency(item.rate)}</Text>
-            <Text style={styles.col4}>{item.taxable ? 'Yes' : 'No'}</Text>
-            <Text style={styles.col5}>{formatCurrency(item.amount)}</Text>
+export const EstimatePDF: React.FC<EstimatePDFProps> = ({ estimate, company }) => {
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ width: '60%' }}>
+            {company.logo && (
+              <Image style={styles.logo} src={company.logo} />
+            )}
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginTop: 10 }}>
+              {company.dbaName || company.name}
+            </Text>
+            <Text style={styles.companyInfo}>{company.address.street1}</Text>
+            {company.address.street2 && (
+              <Text style={styles.companyInfo}>{company.address.street2}</Text>
+            )}
+            <Text style={styles.companyInfo}>
+              {company.address.city}, {company.address.state} {company.address.zip}
+            </Text>
+            <Text style={styles.companyInfo}>{company.phone}</Text>
+            <Text style={styles.companyInfo}>{company.email}</Text>
+            {company.website && (
+              <Text style={styles.companyInfo}>{company.website}</Text>
+            )}
+            {company.licenseNumber && (
+              <Text style={styles.companyInfo}>
+                License: {company.licenseNumber}
+                {company.licenseState && ` (${company.licenseState})`}
+              </Text>
+            )}
           </View>
-        ))}
-      </View>
 
-      {/* Totals */}
-      <View style={styles.totals}>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Subtotal:</Text>
-          <Text style={styles.totalValue}>{formatCurrency(estimate.totals.subtotal)}</Text>
+          <View style={{ width: '40%', alignItems: 'flex-end' }}>
+            <Text style={styles.documentTitle}>ESTIMATE</Text>
+            <Text style={styles.documentNumber}>{estimate.number}</Text>
+            <Text style={{ ...styles.badge, marginTop: 10 }}>{estimate.status}</Text>
+          </View>
         </View>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Tax ({estimate.taxRate}%):</Text>
-          <Text style={styles.totalValue}>{formatCurrency(estimate.totals.taxAmount)}</Text>
-        </View>
-        <View style={[styles.totalRow, styles.grandTotal]}>
-          <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalValue}>{formatCurrency(estimate.totals.total)}</Text>
-        </View>
-      </View>
 
-      {/* Notes */}
-      {estimate.notes && (
-        <View style={styles.notes}>
-          <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Notes:</Text>
-          <Text>{estimate.notes}</Text>
+        {/* Customer Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Bill To:</Text>
+          <Text style={{ fontWeight: 'bold', fontSize: 11 }}>{estimate.customerName}</Text>
+          {estimate.jobName && (
+            <Text style={{ fontSize: 9, color: '#555', marginTop: 3 }}>
+              Job: {estimate.jobName}
+            </Text>
+          )}
         </View>
-      )}
 
-      {/* Terms */}
-      {estimate.termsAndConditions && (
-        <View style={styles.notes}>
-          <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Terms and Conditions:</Text>
-          <Text>{estimate.termsAndConditions}</Text>
+        {/* Estimate Details */}
+        <View style={styles.section}>
+          <View style={styles.row}>
+            <Text style={styles.label}>Date:</Text>
+            <Text style={styles.value}>{new Date(estimate.date).toLocaleDateString()}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Valid Until:</Text>
+            <Text style={styles.value}>{new Date(estimate.expiryDate || estimate.date).toLocaleDateString()}</Text>
+          </View>
         </View>
-      )}
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text>Thank you for your business!</Text>
-      </View>
-    </Page>
-  </Document>
-)
+        {/* Line Items Table */}
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={styles.col1}>Description</Text>
+            <Text style={styles.col2}>Qty</Text>
+            <Text style={styles.col3}>Rate</Text>
+            <Text style={styles.col4}>Tax</Text>
+            <Text style={styles.col5}>Amount</Text>
+          </View>
+
+          {estimate.lineItems.map((item, index) => {
+            const amount = item.quantity * item.unitPrice
+            return (
+              <View key={index} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                <View style={styles.col1}>
+                  <Text style={{ fontWeight: 'bold' }}>{item.description}</Text>
+                  {item.notes && (
+                    <Text style={{ fontSize: 8, color: '#666', marginTop: 2 }}>
+                      {item.notes}
+                    </Text>
+                  )}
+                  <Text style={{ fontSize: 8, color: '#999', marginTop: 2 }}>
+                    {item.type === 'material' && '📦 Material'}
+                    {item.type === 'labor' && '👷 Labor'}
+                    {item.type === 'subcontractor' && '🤝 Subcontractor'}
+                  </Text>
+                </View>
+                <Text style={styles.col2}>{item.quantity}</Text>
+                <Text style={styles.col3}>${item.unitPrice.toFixed(2)}</Text>
+                <Text style={styles.col4}>{item.taxable ? '✓' : '-'}</Text>
+                <Text style={styles.col5}>${amount.toFixed(2)}</Text>
+              </View>
+            )
+          })}
+        </View>
+
+        {/* Totals */}
+        <View style={styles.totalsSection}>
+          <View style={styles.totalRow}>
+            <Text>Subtotal:</Text>
+            <Text>${estimate.subtotal.toFixed(2)}</Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text>Tax ({estimate.taxRate}%):</Text>
+            <Text>${estimate.taxAmount.toFixed(2)}</Text>
+          </View>
+          <View style={styles.grandTotal}>
+            <Text>TOTAL:</Text>
+            <Text>${estimate.total.toFixed(2)}</Text>
+          </View>
+        </View>
+
+        {/* Notes */}
+        {estimate.notes && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Notes:</Text>
+            <Text style={{ fontSize: 9, lineHeight: 1.4 }}>{estimate.notes}</Text>
+          </View>
+        )}
+
+        {/* Terms and Conditions */}
+        {estimate.includeTerms && estimate.termsAndConditions && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Terms & Conditions:</Text>
+            <Text style={{ fontSize: 8, lineHeight: 1.4, color: '#555' }}>
+              {estimate.termsAndConditions}
+            </Text>
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={{ textAlign: 'center' }}>
+            Thank you for your business!
+          </Text>
+          <Text style={{ textAlign: 'center', marginTop: 5 }}>
+            This estimate is valid until {new Date(estimate.expiryDate || estimate.date).toLocaleDateString()}
+          </Text>
+        </View>
+      </Page>
+    </Document>
+  )
+}
