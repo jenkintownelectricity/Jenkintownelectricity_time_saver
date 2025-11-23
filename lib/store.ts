@@ -354,6 +354,7 @@ interface AppState {
   apiKeys: {
     vapi: string | null
     vapiAssistantId: string | null
+    vapiAgentType: string | null
     anthropic: string | null
     quickbooks: string | null
     stripe: string | null
@@ -1695,6 +1696,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   apiKeys: {
     vapi: null,
     vapiAssistantId: null,
+    vapiAgentType: 'electrical', // Default to electrical/HVAC/plumbing agent
     anthropic: null,
     quickbooks: null,
     stripe: null,

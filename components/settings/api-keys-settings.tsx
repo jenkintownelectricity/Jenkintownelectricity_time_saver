@@ -5,28 +5,124 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Mic, Camera, Check, AlertCircle, TestTube } from 'lucide-react'
+import { Mic, Camera, Check, AlertCircle, TestTube, Zap, ExternalLink, Copy } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useToast } from '@/components/ui/use-toast'
 
 export default function ApiKeysSettings() {
   const { apiKeys, setApiKey } = useAppStore()
+  const { toast } = useToast()
 
-  const testVapiConnection = () => {
+  const testVapiConnection = async () => {
     if (!apiKeys.vapi || !apiKeys.vapiAssistantId) {
-      alert('Please enter both VAPI API key and Assistant ID')
+      toast({
+        title: 'Missing Configuration',
+        description: 'Please enter both VAPI API key and Assistant ID',
+        variant: 'destructive',
+      })
       return
     }
-    // TODO: Implement actual connection test
-    alert('Testing VAPI connection...')
+
+    toast({
+      title: 'Testing Connection...',
+      description: 'Verifying your VAPI credentials',
+    })
+
+    try {
+      const response = await fetch('/api/vapi/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: apiKeys.vapi,
+          assistantId: apiKeys.vapiAssistantId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Connection Successful! ✅',
+          description: data.message || 'Your VAPI integration is ready to use',
+        })
+      } else {
+        throw new Error(data.error || 'Connection failed')
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Connection Failed',
+        description: error.message || 'Please check your API key and Assistant ID',
+        variant: 'destructive',
+      })
+    }
   }
 
-  const testAnthropicConnection = () => {
+  const testAnthropicConnection = async () => {
     if (!apiKeys.anthropic) {
-      alert('Please enter Anthropic API key')
+      toast({
+        title: 'API Key Required',
+        description: 'Please enter your Anthropic API key',
+        variant: 'destructive',
+      })
       return
     }
-    // TODO: Implement actual connection test
-    alert('Testing Anthropic connection...')
+
+    toast({
+      title: 'Testing Connection...',
+      description: 'Verifying your Anthropic credentials',
+    })
+
+    try {
+      const response = await fetch('/api/anthropic/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: apiKeys.anthropic,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: 'Connection Successful! ✅',
+          description: data.message || 'Your Anthropic integration is ready to use',
+        })
+      } else {
+        throw new Error(data.error || 'Connection failed')
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Connection Failed',
+        description: error.message || 'Please check your API key',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const copyAgentPrompt = (agentType: string) => {
+    const agentFiles = {
+      electrical: '/app/ai-agents/electrical-hvac-plumbing-agent.ts',
+      restoration: '/app/ai-agents/home-restoration-agent.ts',
+      office: '/app/ai-agents/office-assistant-agent.ts',
+      sales: '/app/ai-agents/salesman-agent.ts',
+    }
+
+    toast({
+      title: 'Agent Configuration Copied!',
+      description: `Open ${agentFiles[agentType as keyof typeof agentFiles]} in your codebase to get the full system prompt`,
+    })
   }
 
   return (
@@ -58,8 +154,8 @@ export default function ApiKeysSettings() {
             />
             <p className="text-xs text-muted-foreground">
               Required for voice calls. Get your key from{' '}
-              <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline">
-                vapi.ai
+              <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-primary hover:underline inline-flex items-center gap-1">
+                vapi.ai <ExternalLink className="w-3 h-3" />
               </a>
             </p>
           </div>
@@ -77,9 +173,34 @@ export default function ApiKeysSettings() {
             />
             <p className="text-xs text-muted-foreground">
               Create your assistant at{' '}
-              <a href="https://vapi.ai/dashboard" target="_blank" rel="noopener" className="text-primary hover:underline">
-                vapi.ai/dashboard
+              <a href="https://vapi.ai/dashboard" target="_blank" rel="noopener" className="text-primary hover:underline inline-flex items-center gap-1">
+                vapi.ai/dashboard <ExternalLink className="w-3 h-3" />
               </a>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="agent-type">
+              AI Agent Type <span className="text-muted-foreground text-xs">(Choose what this assistant does)</span>
+            </Label>
+            <Select
+              value={apiKeys.vapiAgentType || 'electrical'}
+              onValueChange={(value) => setApiKey('vapiAgentType', value)}
+            >
+              <SelectTrigger id="agent-type">
+                <SelectValue placeholder="Select agent type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="electrical">⚡ Electrical/HVAC/Plumbing Specialist</SelectItem>
+                <SelectItem value="restoration">🏠 Home Restoration Specialist</SelectItem>
+                <SelectItem value="office">💼 Office Assistant</SelectItem>
+                <SelectItem value="sales">💰 Sales Specialist</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Each agent has specialized knowledge and scripts. See{' '}
+              <code className="bg-muted px-1 py-0.5 rounded text-xs">/app/ai-agents/README.md</code>{' '}
+              for details
             </p>
           </div>
 
@@ -99,6 +220,79 @@ export default function ApiKeysSettings() {
               <TestTube className="w-4 h-4 mr-2" />
               Test Connection
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Setup Guide */}
+      <Card className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-blue-500" />
+            <CardTitle className="text-lg">Quick Setup for Tonight 🚀</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2 text-sm">
+            <div className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold shrink-0">1</div>
+              <div>
+                <p className="font-medium">Get VAPI API Key</p>
+                <p className="text-xs text-muted-foreground">
+                  Sign up at{' '}
+                  <a href="https://vapi.ai" target="_blank" rel="noopener" className="text-blue-500 hover:underline">
+                    vapi.ai
+                  </a>{' '}
+                  → Dashboard → API Keys → Copy Public Key
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold shrink-0">2</div>
+              <div>
+                <p className="font-medium">Create VAPI Assistant</p>
+                <p className="text-xs text-muted-foreground">
+                  Dashboard → Assistants → New Assistant → Copy the agent prompt from{' '}
+                  <code className="bg-muted px-1 py-0.5 rounded">/app/ai-agents/</code>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold shrink-0">3</div>
+              <div>
+                <p className="font-medium">Configure Voice & Model</p>
+                <p className="text-xs text-muted-foreground">
+                  Voice: ElevenLabs (Rachel for trades, Sarah for restoration, Adam for office, Liam for sales)
+                  <br />
+                  Model: GPT-4o or Claude 3.5 Sonnet
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold shrink-0">4</div>
+              <div>
+                <p className="font-medium">Get Assistant ID & Paste Here</p>
+                <p className="text-xs text-muted-foreground">
+                  Copy your Assistant ID from VAPI dashboard and paste it above
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center text-xs font-bold shrink-0">✓</div>
+              <div>
+                <p className="font-medium text-green-600">You're Live!</p>
+                <p className="text-xs text-muted-foreground">
+                  Calls will auto-create leads in{' '}
+                  <a href="/leads" className="text-blue-500 hover:underline">/leads</a>{' '}
+                  and send to{' '}
+                  <a href="/hive215-config" className="text-blue-500 hover:underline">/hive215-config</a>
+                </p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -128,8 +322,8 @@ export default function ApiKeysSettings() {
             />
             <p className="text-xs text-muted-foreground">
               Get your key from{' '}
-              <a href="https://console.anthropic.com" target="_blank" rel="noopener" className="text-primary hover:underline">
-                console.anthropic.com
+              <a href="https://console.anthropic.com" target="_blank" rel="noopener" className="text-primary hover:underline inline-flex items-center gap-1">
+                console.anthropic.com <ExternalLink className="w-3 h-3" />
               </a>
             </p>
           </div>
