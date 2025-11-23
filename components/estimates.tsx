@@ -297,7 +297,7 @@ export default function Estimates() {
       setFormData({
         ...formData,
         customerId: customer.id,
-        customerName: customer.data.name || customer.data.company || 'Unknown'
+        customerName: String(customer.data.name || customer.data.company || 'Unknown')
       })
     }
   }
@@ -308,7 +308,7 @@ export default function Estimates() {
       setFormData({
         ...formData,
         jobId: job.id,
-        jobName: job.data.title || job.data.jobNumber || job.data.address || 'Unknown'
+        jobName: String(job.data.title || job.data.jobNumber || job.data.address || 'Unknown')
       })
     }
   }
@@ -599,7 +599,7 @@ export default function Estimates() {
                       <option value="">Select customer...</option>
                       {customers.map(customer => (
                         <option key={customer.id} value={customer.id}>
-                          {customer.data.name || customer.data.company}
+                          {String(customer.data.name || customer.data.company || 'Unknown')}
                         </option>
                       ))}
                     </select>
@@ -614,7 +614,7 @@ export default function Estimates() {
                       <option value="">Select job...</option>
                       {jobs.map(job => (
                         <option key={job.id} value={job.id}>
-                          {job.data.title || job.data.jobNumber || job.data.address || 'Untitled Job'}
+                          {String(job.data.title || job.data.jobNumber || job.data.address || 'Untitled Job')}
                         </option>
                       ))}
                     </select>

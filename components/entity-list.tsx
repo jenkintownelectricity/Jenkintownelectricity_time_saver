@@ -246,16 +246,16 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
                           </button>
                           {statusOptions.map((status) => (
                             <button
-                              key={status}
+                              key={String(status)}
                               onClick={() => {
-                                setFilterStatus(status)
+                                setFilterStatus(String(status))
                                 setShowFilterModal(false)
                               }}
                               className={`w-full text-left px-3 py-2 rounded text-sm ${
                                 filterStatus === status ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
                               }`}
                             >
-                              {status}
+                              {String(status)}
                             </button>
                           ))}
                         </div>
@@ -323,9 +323,9 @@ export default function EntityList({ entityTypeId }: EntityListProps) {
                             </h3>
                             {statusField && entity.data[statusField.name] && (
                               <Badge
-                                className={`${getStatusColor(entity.data[statusField.name])} text-white`}
+                                className={`${getStatusColor(String(entity.data[statusField.name]))} text-white`}
                               >
-                                {entity.data[statusField.name]}
+                                {String(entity.data[statusField.name])}
                               </Badge>
                             )}
                           </div>

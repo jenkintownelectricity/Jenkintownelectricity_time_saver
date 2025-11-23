@@ -623,7 +623,7 @@ export default function Invoices() {
                       setFormData({
                         ...formData,
                         customerId: e.target.value,
-                        customerName: customer?.data.name || customer?.data.company || ''
+                        customerName: String(customer?.data.name || customer?.data.company || '')
                       })
                     }}
                     className="flex-1 border rounded-md px-3 py-2 bg-background"
@@ -631,7 +631,7 @@ export default function Invoices() {
                     <option value="">Select Customer</option>
                     {customers.map(customer => (
                       <option key={customer.id} value={customer.id}>
-                        {customer.data.name || customer.data.company}
+                        {String(customer.data.name || customer.data.company || 'Unknown')}
                       </option>
                     ))}
                   </select>
@@ -654,7 +654,7 @@ export default function Invoices() {
                       setFormData({
                         ...formData,
                         jobId: e.target.value,
-                        jobName: job?.data.name || ''
+                        jobName: String(job?.data.name || '')
                       })
                     }}
                     className="flex-1 border rounded-md px-3 py-2 bg-background"
@@ -662,7 +662,7 @@ export default function Invoices() {
                     <option value="">Select Job</option>
                     {jobs.map(job => (
                       <option key={job.id} value={job.id}>
-                        {job.data.title || job.data.jobNumber || job.data.address || 'Untitled Job'}
+                        {String(job.data.title || job.data.jobNumber || job.data.address || 'Untitled Job')}
                       </option>
                     ))}
                   </select>
