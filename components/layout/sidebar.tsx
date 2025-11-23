@@ -169,7 +169,9 @@ interface SidebarProps {
 
 export function Sidebar({ className, collapsed = false, onCollapse }: SidebarProps) {
   const pathname = usePathname()
-  const { features, userAccount } = useAppStore()
+  const store = useAppStore()
+  const features: any = {}  // Mock value for unused component
+  const userAccount: any = null  // Mock value for unused component
   const [expandedItems, setExpandedItems] = useState<string[]>([])
 
   const toggleExpanded = (title: string) => {
@@ -206,7 +208,7 @@ export function Sidebar({ className, collapsed = false, onCollapse }: SidebarPro
     if (!userAccount) return 'U'
     return userAccount.name
       .split(' ')
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2)

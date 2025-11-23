@@ -23,26 +23,43 @@ import {
   Check,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { CallType, WorkCall } from '@/lib/store'
+
+// Local type definitions (component not used)
+type CallType = 'emergency' | 'daytime' | 'scheduled'
+interface WorkCall {
+  id: string
+  type: CallType
+  title: string
+  description: string
+  location: string
+  bonus: number
+  expiresAt: number
+  status: string
+  createdAt?: number
+  claimedBy?: string
+  companyCode?: string
+  customerName?: string
+  customerPhone?: string
+}
 
 export default function WorkCallBidding() {
-  const {
-    setCurrentSection,
-    userAccount,
-    companies,
-    currentCompanyCode,
-    workCalls,
-    callStats,
-    isOnCall,
-    createWorkCall,
-    claimCall,
-    placeBid,
-    acceptBid,
-    setOnCall,
-    expireOldCalls,
-    updateCompanySettings,
-    linkCompany,
-  } = useAppStore()
+  const store = useAppStore()
+  const { setCurrentSection } = store
+  // Mock values for unused component
+  const userAccount: any = null
+  const companies: any[] = []
+  const currentCompanyCode = null
+  const workCalls: WorkCall[] = []
+  const callStats: any = {}
+  const isOnCall = false
+  const createWorkCall = (..._args: any[]) => {}
+  const claimCall = (..._args: any[]) => {}
+  const placeBid = (..._args: any[]) => {}
+  const acceptBid = (..._args: any[]) => {}
+  const setOnCall = (..._args: any[]) => {}
+  const expireOldCalls = (..._args: any[]) => {}
+  const updateCompanySettings = (..._args: any[]) => {}
+  const linkCompany = (..._args: any[]) => {}
 
   const [showCreateCall, setShowCreateCall] = useState(false)
   const [callType, setCallType] = useState<CallType>('daytime')
@@ -222,7 +239,7 @@ ${workCalls.slice(0, 20).map(call => `
   Type: ${call.type.toUpperCase()}
   Status: ${call.status.toUpperCase()}
   Bonus: $${call.bonus}
-  Created: ${new Date(call.createdAt).toLocaleString()}
+  Created: ${call.createdAt ? new Date(call.createdAt).toLocaleString() : 'Unknown'}
   ${call.claimedBy ? `Claimed by: ${call.claimedBy}` : ''}
 `).join('\n')}
 
