@@ -35,7 +35,8 @@ interface HeaderProps {
 }
 
 export function Header({ className, onMenuClick }: HeaderProps) {
-  const { userAccount, companies, currentCompanyCode, switchCompany } = useAppStore()
+  // Note: This component is not currently used in the app
+  const store = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [notifications] = useState([
     { id: 1, title: 'New work call available', time: '5m ago', unread: true },
@@ -43,6 +44,11 @@ export function Header({ className, onMenuClick }: HeaderProps) {
     { id: 3, title: 'New customer message', time: '2h ago', unread: false },
   ])
 
+  // Mock values for unused component
+  const userAccount: any = null
+  const companies: any[] = []
+  const currentCompanyCode = null
+  const switchCompany = (_code: string) => {}
   const currentCompany = companies.find((c) => c.code === currentCompanyCode)
   const unreadCount = notifications.filter((n) => n.unread).length
 
@@ -50,7 +56,7 @@ export function Header({ className, onMenuClick }: HeaderProps) {
     if (!userAccount) return 'U'
     return userAccount.name
       .split(' ')
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2)

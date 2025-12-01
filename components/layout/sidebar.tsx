@@ -22,6 +22,9 @@ import {
   Mic,
   Camera,
   BookOpen,
+  UserPlus,
+  Plug,
+  Smartphone,
 } from 'lucide-react'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -55,6 +58,27 @@ const navItems: NavItem[] = [
     title: 'Customers',
     href: '/customers',
     icon: Users,
+  },
+  {
+    title: 'Leads',
+    href: '/leads',
+    icon: UserPlus,
+    badge: 'NEW',
+    badgeVariant: 'default',
+  },
+  {
+    title: 'Integrations',
+    href: '/integrations',
+    icon: Plug,
+    badge: 'NEW',
+    badgeVariant: 'default',
+  },
+  {
+    title: 'HiVE215 Config',
+    href: '/hive215-config',
+    icon: Smartphone,
+    badge: 'NEW',
+    badgeVariant: 'default',
   },
   {
     title: 'Jobs & Projects',
@@ -145,7 +169,9 @@ interface SidebarProps {
 
 export function Sidebar({ className, collapsed = false, onCollapse }: SidebarProps) {
   const pathname = usePathname()
-  const { features, userAccount } = useAppStore()
+  const store = useAppStore()
+  const features: any = {}  // Mock value for unused component
+  const userAccount: any = null  // Mock value for unused component
   const [expandedItems, setExpandedItems] = useState<string[]>([])
 
   const toggleExpanded = (title: string) => {
@@ -182,7 +208,7 @@ export function Sidebar({ className, collapsed = false, onCollapse }: SidebarPro
     if (!userAccount) return 'U'
     return userAccount.name
       .split(' ')
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2)

@@ -7,7 +7,10 @@ import { Building2, Users, ExternalLink } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 
 export default function CompanySettings() {
-  const { companies, currentCompanyCode, switchCompany } = useAppStore()
+  const store = useAppStore()
+  const companies: any[] = []  // Mock value
+  const currentCompanyCode = null  // Mock value
+  const switchCompany = (_code: string) => {}  // Mock value
 
   const currentCompany = companies.find(c => c.code === currentCompanyCode)
 

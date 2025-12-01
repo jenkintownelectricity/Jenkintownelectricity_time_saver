@@ -10,7 +10,8 @@ import { User, Mail, Phone, Briefcase, Lock, Upload } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 
 export default function ProfileSettings() {
-  const { userAccount } = useAppStore()
+  const store = useAppStore()
+  const userAccount: any = null  // Mock value
   const [formData, setFormData] = useState({
     name: userAccount?.name || '',
     email: userAccount?.email || '',

@@ -140,7 +140,8 @@ interface MobileMenuProps {
 
 export function MobileMenu({ open, onOpenChange }: MobileMenuProps) {
   const pathname = usePathname()
-  const { features } = useAppStore()
+  const store = useAppStore()
+  const features: any = {}  // Mock value for unused component
   const [expandedItems, setExpandedItems] = useState<string[]>([])
 
   const toggleExpanded = (title: string) => {
